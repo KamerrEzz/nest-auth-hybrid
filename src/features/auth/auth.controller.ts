@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Delete, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -10,59 +18,56 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserService } from '../../modules/user/user.service';
 import type { Response } from 'express';
 import { randomUUID } from 'crypto';
+import { RegisterResponseDto } from './dto/register-response.dto';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { UserResponseDto } from '../../modules/user/dto/user-response.dto';
+import { ConfigService } from '@nestjs/config';
+import { instanceToPlain } from 'class-transformer';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly users: UserService,
+    private readonly config: ConfigService,
   ) {}
 
+  private parseDuration(value: string | number | undefined) {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    const s = String(value);
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+    const m = s.match(/^(\d+)([smhd])$/);
+    if (!m) return 0;
+    const num = parseInt(m[1], 10);
+    const unit = m[2];
+    const map = { s: 1, m: 60, h: 3600, d: 86400 } as Record<string, number>;
+    return num * map[unit];
+  }
+
+  private toUserDto(entity: {
+    id: string;
+    email: string;
+    name?: string | null;
+    createdAt?: Date;
+  }) {
+    return new UserResponseDto({
+      id: entity.id,
+      email: entity.email,
+      name: entity.name ?? undefined,
+      createdAt: entity.createdAt ?? new Date(),
+    });
+  }
+
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto.email, dto.password, dto.name);
-  }
-
-  @Post('login')
-  async login(
-    @Body() dto: LoginDto,
+  @HttpCode(201)
+  async register(
+    @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const result = await this.auth.login(dto.email, dto.password);
-    const sid = (result as { sessionId?: string }).sessionId;
-    if (sid) {
-      const isProd = process.env.NODE_ENV === 'production';
-      res.cookie('sessionId', sid, {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: 'strict',
-        maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
-      });
-      const csrfToken = randomUUID();
-      res.cookie('csrfToken', csrfToken, {
-        httpOnly: false,
-        secure: isProd,
-        sameSite: 'strict',
-        maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
-      });
-      (result as any).csrfToken = csrfToken;
-    }
-    return result;
-  }
-
-  @Post('verify-otp')
-  async verifyOtp(
-    @Body() dto: VerifyOtpDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const result = await this.auth.verifyOtp(
-      dto.tempToken,
-      dto.otpCode,
-      dto.totpCode,
-    );
-    const sid = (result as { sessionId?: string }).sessionId;
+  ): Promise<RegisterResponseDto> {
+    const result = await this.auth.register(dto.email, dto.password, dto.name);
     const isProd = process.env.NODE_ENV === 'production';
-    res.cookie('sessionId', sid ?? '', {
+    res.cookie('sessionId', result.sessionId, {
       httpOnly: true,
       secure: isProd,
       sameSite: 'strict',
@@ -75,8 +80,85 @@ export class AuthController {
       sameSite: 'strict',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
-    (result as any).csrfToken = csrfToken;
-    return result;
+    const dtoOut = new RegisterResponseDto({
+      message: 'Registration successful',
+      user: this.toUserDto(result.user),
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+    return instanceToPlain(dtoOut) as RegisterResponseDto;
+  }
+
+  @Post('login')
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto | { requiresOtp: true; tempToken: string }> {
+    const result = await this.auth.login(dto.email, dto.password);
+    if ('requiresOtp' in result) {
+      return { requiresOtp: true, tempToken: result.tempToken };
+    }
+    const sid = result.sessionId;
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('sessionId', sid, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const csrfToken = randomUUID();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const expiresIn = this.parseDuration(
+      this.config.get<string>('jwt.accessExpiration'),
+    );
+    const dtoOut = new AuthResponseDto({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: this.toUserDto(result.user),
+      expiresIn,
+    });
+    return instanceToPlain(dtoOut) as AuthResponseDto;
+  }
+
+  @Post('verify-otp')
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.auth.verifyOtp(
+      dto.tempToken,
+      dto.otpCode,
+      dto.totpCode,
+    );
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('sessionId', result.sessionId ?? '', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const csrfToken = randomUUID();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const expiresIn = this.parseDuration(
+      this.config.get<string>('jwt.accessExpiration'),
+    );
+    const dtoOut = new AuthResponseDto({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: this.toUserDto(result.user),
+      expiresIn,
+    });
+    return instanceToPlain(dtoOut) as AuthResponseDto;
   }
 
   @Post('enable-2fa')
@@ -124,7 +206,10 @@ export class AuthController {
   @UseGuards(HybridAuthGuard)
   async me(@CurrentUser() user?: { id: string }) {
     if (!user) return null;
-    return this.users.findById(user.id);
+    const entity = await this.users.findById(user.id);
+    return entity
+      ? (instanceToPlain(this.toUserDto(entity)) as UserResponseDto)
+      : null;
   }
 
   @Post('logout')

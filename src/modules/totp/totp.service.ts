@@ -8,21 +8,60 @@ import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 export class TotpService {
   constructor(private config: ConfigService) {}
 
-  generateSecret(label: string) {
-    const secret = speakeasy.generateSecret({ length: 20, name: label });
-    return { base32: secret.base32, otpauthUrl: secret.otpauth_url! };
+  generateSecret(label: string): { base32: string; otpauthUrl: string } {
+    const gen: (opts: { length?: number; name?: string }) => {
+      base32: string;
+      otpauth_url?: string;
+    } = (
+      speakeasy as unknown as {
+        generateSecret: typeof speakeasy.generateSecret;
+      }
+    ).generateSecret as unknown as (opts: {
+      length?: number;
+      name?: string;
+    }) => {
+      base32: string;
+      otpauth_url?: string;
+    };
+    const secret = gen({ length: 20, name: label });
+    return { base32: secret.base32, otpauthUrl: secret.otpauth_url ?? '' };
   }
 
-  async generateQrDataUrl(otpauthUrl: string) {
-    return await qrcode.toDataURL(otpauthUrl);
+  async generateQrDataUrl(otpauthUrl: string): Promise<string> {
+    const toData: (s: string) => Promise<string> = (
+      qrcode as unknown as {
+        toDataURL: (s: string) => Promise<string>;
+      }
+    ).toDataURL;
+    return await toData(otpauthUrl);
   }
 
-  verify(code: string, secretBase32: string) {
-    return speakeasy.totp.verify({
+  verify(code: string, secretBase32: string): boolean {
+    const verifyFn: (opts: {
+      secret: string;
+      encoding: 'base32';
+      window: number;
+      step: number;
+      token: string;
+    }) => boolean = (
+      speakeasy as unknown as {
+        totp: {
+          verify: (opts: {
+            secret: string;
+            encoding: 'base32';
+            window: number;
+            step: number;
+            token: string;
+          }) => boolean;
+        };
+      }
+    ).totp.verify;
+    return verifyFn({
       secret: secretBase32,
       encoding: 'base32',
       window: 1,
       step: 30,
+      token: code,
     });
   }
 
@@ -50,8 +89,11 @@ export class TotpService {
   private getKey() {
     const raw = this.config.get<string>('security.totpEncKey') ?? '';
     if (!raw || raw.length < 32) {
-      throw new Error('Missing security.totpEncKey');
+      throw new Error('Missing TOTP_ENC_KEY');
     }
-    return Buffer.from(raw.slice(0, 32));
+    if (/^[0-9a-fA-F]{64}$/.test(raw)) {
+      return Buffer.from(raw, 'hex');
+    }
+    return Buffer.from(raw.slice(0, 32), 'utf8');
   }
 }

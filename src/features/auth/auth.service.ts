@@ -7,6 +7,26 @@ import * as bcrypt from 'bcrypt';
 import { OtpService } from '../../modules/otp/otp.service';
 import { EmailService } from '../../modules/email/email.service';
 import { TotpService } from '../../modules/totp/totp.service';
+import type { UserEntity } from '../../common/types/auth.types';
+
+export interface RegisterResult {
+  user: UserEntity;
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+}
+
+export interface LoginSuccess {
+  user: UserEntity;
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+}
+
+export interface RequiresOtp {
+  requiresOtp: true;
+  tempToken: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -20,13 +40,28 @@ export class AuthService {
     private totp: TotpService,
   ) {}
 
-  async register(email: string, password: string, name?: string) {
+  async register(
+    email: string,
+    password: string,
+    name?: string,
+  ): Promise<RegisterResult> {
     const exists = await this.users.findByEmail(email);
     if (exists) throw new UnauthorizedException();
-    return this.users.create({ email, password, name });
+    const user = await this.users.create({ email, password, name });
+    const accessToken = await this.tokens.signAccess({ sub: user.id });
+    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
+    const session = await this.sessions.create(
+      user.id,
+      this.config.get<number>('session.maxAge')!,
+      {},
+    );
+    return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
-  async login(email: string, password: string) {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<LoginSuccess | RequiresOtp> {
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException();
     const ok = await bcrypt.compare(password, user.password);
@@ -43,10 +78,14 @@ export class AuthService {
       this.config.get<number>('session.maxAge')!,
       {},
     );
-    return { accessToken, refreshToken, sessionId: session.id };
+    return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
-  async verifyOtp(tempToken: string, otpCode: string, totpCode?: string) {
+  async verifyOtp(
+    tempToken: string,
+    otpCode: string,
+    totpCode?: string,
+  ): Promise<LoginSuccess> {
     const email = await this.otp.verify(tempToken, otpCode);
     if (!email) throw new UnauthorizedException();
     const user = await this.users.findByEmail(email);
@@ -63,20 +102,24 @@ export class AuthService {
       this.config.get<number>('session.maxAge')!,
       {},
     );
-    return { accessToken, refreshToken, sessionId: session.id };
+    return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
   async enable2fa(userId: string, label: string) {
     const s = this.totp.generateSecret(label);
     const enc = this.totp.encryptSecret(s.base32);
-    const backups = Array.from({ length: 10 }, () =>
+    const rawBackups = Array.from({ length: 10 }, () =>
       Math.random().toString(36).slice(2, 10),
     );
     const user = await this.users.findById(userId);
     if (!user) throw new UnauthorizedException();
-    await this.users.enable2FA(userId, enc, backups);
+    const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
+    const hashed = await Promise.all(
+      rawBackups.map((code) => bcrypt.hash(code, rounds)),
+    );
+    await this.users.enable2FA(userId, enc, hashed);
     const qr = await this.totp.generateQrDataUrl(s.otpauthUrl);
-    return { qrCode: qr, secret: s.base32 };
+    return { qrCode: qr, secret: s.base32, backupCodes: rawBackups };
   }
 
   async disable2fa(userId: string) {
