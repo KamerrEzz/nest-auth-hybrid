@@ -15,15 +15,15 @@ export interface CreateUserInput {
 export class PrismaRepository extends PrismaService {
   async createUser(data: CreateUserInput): Promise<User> {
     const result = await this.user.create({ data });
-    return result as User;
+    return result;
   }
   async findUserByEmail(email: string): Promise<User | null> {
     const result = await this.user.findUnique({ where: { email } });
-    return (result ?? null) as User | null;
+    return result ?? null;
   }
   async findUserById(id: string): Promise<User | null> {
     const result = await this.user.findUnique({ where: { id } });
-    return (result ?? null) as User | null;
+    return result ?? null;
   }
 
   async enable2FA(
@@ -35,7 +35,7 @@ export class PrismaRepository extends PrismaService {
       where: { id: userId },
       data: { has2FA: true, totpSecret: totpSecretEnc, backupCodes },
     });
-    return result as User;
+    return result;
   }
 
   async disable2FA(userId: string) {
@@ -43,6 +43,6 @@ export class PrismaRepository extends PrismaService {
       where: { id: userId },
       data: { has2FA: false, totpSecret: null, backupCodes: [] },
     });
-    return result as User;
+    return result;
   }
 }
