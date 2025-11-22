@@ -151,7 +151,14 @@ export class AuthService {
     if (!authorized && byBackup) {
       authorized = await this.users.consumeBackupCode(userId, byBackup);
     }
-    if (!authorized) throw new UnauthorizedException();
+    // Permitir cancelar si aún no está confirmado (has2FA=false)
+    if (!authorized) {
+      if (!user.has2FA) {
+        await this.users.cancel2FA(userId);
+        return { ok: true };
+      }
+      throw new UnauthorizedException();
+    }
     await this.users.disable2FA(userId);
     return { ok: true };
   }
@@ -162,6 +169,7 @@ export class AuthService {
     const secret = this.totp.decryptSecret(user.totpSecret);
     const ok = this.totp.verify(code, secret);
     if (!ok) throw new UnauthorizedException();
+    await this.users.confirm2FA(userId);
     return { ok: true };
   }
 

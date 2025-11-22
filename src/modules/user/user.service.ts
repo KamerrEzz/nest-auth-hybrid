@@ -59,4 +59,12 @@ export class UserService {
     await this.prisma.updateBackupCodes(user.id, next);
     return true;
   }
+
+  async confirm2FA(userId: string) {
+    await this.prisma.confirm2FA(userId);
+  }
+
+  async cancel2FA(userId: string) {
+    await this.prisma.cancel2FA(userId);
+  }
 }

@@ -33,7 +33,7 @@ export class PrismaRepository extends PrismaService {
   ) {
     const result = await this.user.update({
       where: { id: userId },
-      data: { has2FA: true, totpSecret: totpSecretEnc, backupCodes },
+      data: { has2FA: false, totpSecret: totpSecretEnc, backupCodes },
     });
     return result;
   }
@@ -50,6 +50,22 @@ export class PrismaRepository extends PrismaService {
     const result = await this.user.update({
       where: { id: userId },
       data: { backupCodes },
+    });
+    return result;
+  }
+
+  async confirm2FA(userId: string) {
+    const result = await this.user.update({
+      where: { id: userId },
+      data: { has2FA: true },
+    });
+    return result;
+  }
+
+  async cancel2FA(userId: string) {
+    const result = await this.user.update({
+      where: { id: userId },
+      data: { has2FA: false, totpSecret: null, backupCodes: [] },
     });
     return result;
   }

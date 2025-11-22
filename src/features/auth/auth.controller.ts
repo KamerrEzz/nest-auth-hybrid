@@ -202,6 +202,13 @@ export class AuthController {
     return this.auth.disable2fa(user.id, body);
   }
 
+  @Post('2fa/cancel')
+  @UseGuards(HybridAuthGuard)
+  async cancel2fa(@CurrentUser() user: { id: string }) {
+    // Cancelar solo si no está confirmado aún
+    return this.auth.disable2fa(user.id, {});
+  }
+
   @Get('csrf')
   csrf(@Res({ passthrough: true }) res: Response) {
     const isProd = process.env.NODE_ENV === 'production';
