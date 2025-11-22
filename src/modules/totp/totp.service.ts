@@ -48,9 +48,9 @@ export class TotpService {
   }
 
   private getKey() {
-    const raw = this.config.get<string>('TOTP_ENC_KEY') ?? '';
+    const raw = this.config.get<string>('security.totpEncKey') ?? '';
     if (!raw || raw.length < 32) {
-      throw new Error('Missing TOTP_ENC_KEY');
+      throw new Error('Missing security.totpEncKey');
     }
     return Buffer.from(raw.slice(0, 32));
   }
