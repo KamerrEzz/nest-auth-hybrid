@@ -181,11 +181,25 @@ export class AuthController {
     return this.auth.verify2fa(user.id, body.code);
   }
 
+  @Get('2fa/status')
+  @UseGuards(HybridAuthGuard)
+  async twofaStatus(@CurrentUser() user?: { id: string }) {
+    if (!user) return { enabled: false };
+    const entity = await this.users.findById(user.id);
+    return {
+      enabled: !!entity?.has2FA,
+      hasSecret: !!entity?.totpSecret,
+      backupCount: entity?.backupCodes?.length ?? 0,
+    };
+  }
+
   @Post('disable-2fa')
   @UseGuards(HybridAuthGuard)
-  async disable2fa(@CurrentUser() user: { id: string }) {
-    await this.auth.disable2fa(user.id);
-    return { ok: true };
+  async disable2fa(
+    @CurrentUser() user: { id: string },
+    @Body() body: { totpCode?: string; backupCode?: string },
+  ) {
+    return this.auth.disable2fa(user.id, body);
   }
 
   @Get('csrf')

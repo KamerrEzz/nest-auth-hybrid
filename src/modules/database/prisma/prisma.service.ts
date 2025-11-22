@@ -45,4 +45,12 @@ export class PrismaRepository extends PrismaService {
     });
     return result;
   }
+
+  async updateBackupCodes(userId: string, backupCodes: string[]) {
+    const result = await this.user.update({
+      where: { id: userId },
+      data: { backupCodes },
+    });
+    return result;
+  }
 }

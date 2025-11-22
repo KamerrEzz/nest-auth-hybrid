@@ -41,4 +41,22 @@ export class UserService {
   async disable2FA(userId: string) {
     await this.prisma.disable2FA(userId);
   }
+
+  async consumeBackupCode(userId: string, code: string) {
+    const user = await this.findById(userId);
+    if (!user || !user.backupCodes || user.backupCodes.length === 0)
+      return false;
+    let matchedIndex = -1;
+    for (let i = 0; i < user.backupCodes.length; i++) {
+      const ok = await bcrypt.compare(code, user.backupCodes[i]);
+      if (ok) {
+        matchedIndex = i;
+        break;
+      }
+    }
+    if (matchedIndex < 0) return false;
+    const next = user.backupCodes.filter((_, i) => i !== matchedIndex);
+    await this.prisma.updateBackupCodes(user.id, next);
+    return true;
+  }
 }

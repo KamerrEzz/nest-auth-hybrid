@@ -135,7 +135,23 @@ export class AuthService {
     return { qrCode: qr, secret: s.base32, backupCodes: rawBackups };
   }
 
-  async disable2fa(userId: string) {
+  async disable2fa(
+    userId: string,
+    body?: { totpCode?: string; backupCode?: string },
+  ) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    const byTotp = body?.totpCode ?? '';
+    const byBackup = body?.backupCode ?? '';
+    let authorized = false;
+    if (byTotp && user.totpSecret) {
+      const secret = this.totp.decryptSecret(user.totpSecret);
+      authorized = this.totp.verify(byTotp, secret);
+    }
+    if (!authorized && byBackup) {
+      authorized = await this.users.consumeBackupCode(userId, byBackup);
+    }
+    if (!authorized) throw new UnauthorizedException();
     await this.users.disable2FA(userId);
     return { ok: true };
   }

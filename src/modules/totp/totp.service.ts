@@ -9,54 +9,46 @@ export class TotpService {
   constructor(private config: ConfigService) {}
 
   generateSecret(label: string): { base32: string; otpauthUrl: string } {
-    const gen: (opts: { length?: number; name?: string }) => {
-      base32: string;
-      otpauth_url?: string;
-    } = (
-      speakeasy as unknown as {
-        generateSecret: typeof speakeasy.generateSecret;
-      }
-    ).generateSecret as unknown as (opts: {
-      length?: number;
-      name?: string;
-    }) => {
-      base32: string;
-      otpauth_url?: string;
+    type Speakeasy = {
+      generateSecret: (opts: { length?: number; name?: string }) => {
+        base32: string;
+        otpauth_url?: string;
+      };
+      totp: {
+        verify: (opts: {
+          secret: string;
+          encoding: 'base32';
+          window: number;
+          step: number;
+          token: string;
+        }) => boolean;
+      };
     };
-    const secret = gen({ length: 20, name: label });
+    const sp = speakeasy as unknown as Speakeasy;
+    const secret = sp.generateSecret({ length: 20, name: label });
     return { base32: secret.base32, otpauthUrl: secret.otpauth_url ?? '' };
   }
 
   async generateQrDataUrl(otpauthUrl: string): Promise<string> {
-    const toData: (s: string) => Promise<string> = (
-      qrcode as unknown as {
-        toDataURL: (s: string) => Promise<string>;
-      }
-    ).toDataURL;
-    return await toData(otpauthUrl);
+    type QrCode = { toDataURL: (s: string) => Promise<string> };
+    const qr = qrcode as unknown as QrCode;
+    return await qr.toDataURL(otpauthUrl);
   }
 
   verify(code: string, secretBase32: string): boolean {
-    const verifyFn: (opts: {
-      secret: string;
-      encoding: 'base32';
-      window: number;
-      step: number;
-      token: string;
-    }) => boolean = (
-      speakeasy as unknown as {
-        totp: {
-          verify: (opts: {
-            secret: string;
-            encoding: 'base32';
-            window: number;
-            step: number;
-            token: string;
-          }) => boolean;
-        };
-      }
-    ).totp.verify;
-    return verifyFn({
+    type Speakeasy = {
+      totp: {
+        verify: (opts: {
+          secret: string;
+          encoding: 'base32';
+          window: number;
+          step: number;
+          token: string;
+        }) => boolean;
+      };
+    };
+    const sp = speakeasy as unknown as Speakeasy;
+    return sp.totp.verify({
       secret: secretBase32,
       encoding: 'base32',
       window: 1,
