@@ -14,6 +14,7 @@ import { AuthModule } from './features/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { CsrfGuard } from './common/guards/csrf.guard';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CsrfGuard } from './common/guards/csrf.guard';
       },
     ]),
     PrismaModule,
+    PassportModule,
     UserModule,
     AuthModule,
   ],

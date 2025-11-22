@@ -13,7 +13,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
+import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserService } from '../../modules/user/user.service';
 import type { Response } from 'express';
@@ -90,6 +90,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(AuthGuard('local'))
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -126,6 +127,7 @@ export class AuthController {
   }
 
   @Post('verify-otp')
+  @UseGuards(AuthGuard('twofa'))
   async verifyOtp(
     @Body() dto: VerifyOtpDto,
     @Res({ passthrough: true }) res: Response,
@@ -162,14 +164,14 @@ export class AuthController {
   }
 
   @Post('enable-2fa')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   async enable2fa(@CurrentUser() user?: { id: string }) {
     if (!user) return { ok: false };
     return this.auth.enable2fa(user.id, user.id);
   }
 
   @Post('verify-2fa')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   async verify2fa(
     @CurrentUser() user: { id: string },
     @Body() body: { code: string },
@@ -178,7 +180,7 @@ export class AuthController {
   }
 
   @Post('disable-2fa')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   async disable2fa(@CurrentUser() user: { id: string }) {
     await this.auth.disable2fa(user.id);
     return { ok: true };
@@ -203,7 +205,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   async me(@CurrentUser() user?: { id: string }) {
     if (!user) return null;
     const entity = await this.users.findById(user.id);
@@ -213,21 +215,21 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('sessionId');
     return { ok: true };
   }
 
   @Get('sessions')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   async sessions(@CurrentUser() user?: { id: string }) {
     if (!user) return [];
     return this.auth.listSessions(user.id);
   }
 
   @Delete('sessions/:id')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   async revoke(@Param('id') id: string) {
     await this.auth.revokeSession(id);
     return { ok: true };
