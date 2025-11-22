@@ -105,6 +105,19 @@ export class AuthService {
     return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
+  async issueForUserId(userId: string): Promise<LoginSuccess> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    const accessToken = await this.tokens.signAccess({ sub: user.id });
+    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
+    const session = await this.sessions.create(
+      user.id,
+      this.config.get<number>('session.maxAge')!,
+      {},
+    );
+    return { accessToken, refreshToken, sessionId: session.id, user };
+  }
+
   async enable2fa(userId: string, label: string) {
     const s = this.totp.generateSecret(label);
     const enc = this.totp.encryptSecret(s.base32);

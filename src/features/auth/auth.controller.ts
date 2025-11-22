@@ -14,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserService } from '../../modules/user/user.service';
 import type { Response } from 'express';
@@ -23,6 +24,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { UserResponseDto } from '../../modules/user/dto/user-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { instanceToPlain } from 'class-transformer';
+import { Request } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -164,14 +166,14 @@ export class AuthController {
   }
 
   @Post('enable-2fa')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   async enable2fa(@CurrentUser() user?: { id: string }) {
     if (!user) return { ok: false };
     return this.auth.enable2fa(user.id, user.id);
   }
 
   @Post('verify-2fa')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   async verify2fa(
     @CurrentUser() user: { id: string },
     @Body() body: { code: string },
@@ -180,7 +182,7 @@ export class AuthController {
   }
 
   @Post('disable-2fa')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   async disable2fa(@CurrentUser() user: { id: string }) {
     await this.auth.disable2fa(user.id);
     return { ok: true };
@@ -205,7 +207,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   async me(@CurrentUser() user?: { id: string }) {
     if (!user) return null;
     const entity = await this.users.findById(user.id);
@@ -215,23 +217,100 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('sessionId');
     return { ok: true };
   }
 
   @Get('sessions')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   async sessions(@CurrentUser() user?: { id: string }) {
     if (!user) return [];
     return this.auth.listSessions(user.id);
   }
 
   @Delete('sessions/:id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(HybridAuthGuard)
   async revoke(@Param('id') id: string) {
     await this.auth.revokeSession(id);
     return { ok: true };
+  }
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  google() {
+    return;
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(
+    @CurrentUser() user: { id: string },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.auth.issueForUserId(user.id);
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('sessionId', result.sessionId, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const csrfToken = randomUUID();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const expiresIn = this.parseDuration(
+      this.config.get<string>('jwt.accessExpiration'),
+    );
+    const dtoOut = new AuthResponseDto({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: this.toUserDto(result.user),
+      expiresIn,
+    });
+    return instanceToPlain(dtoOut) as AuthResponseDto;
+  }
+
+  @Get('discord')
+  @UseGuards(AuthGuard('discord'))
+  discord() {
+    return;
+  }
+
+  @Get('discord/callback')
+  @UseGuards(AuthGuard('discord'))
+  async discordCallback(
+    @CurrentUser() user: { id: string },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.auth.issueForUserId(user.id);
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('sessionId', result.sessionId, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const csrfToken = randomUUID();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    const expiresIn = this.parseDuration(
+      this.config.get<string>('jwt.accessExpiration'),
+    );
+    const dtoOut = new AuthResponseDto({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: this.toUserDto(result.user),
+      expiresIn,
+    });
+    return instanceToPlain(dtoOut) as AuthResponseDto;
   }
 }

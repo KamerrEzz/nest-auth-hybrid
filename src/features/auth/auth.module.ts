@@ -13,6 +13,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TwoFaStrategy } from './strategies/twofa.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { DiscordStrategy } from './strategies/discord.strategy';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SessionAuthGuard } from '../../common/guards/session-auth.guard';
+import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { DiscordStrategy } from './strategies/discord.strategy';
     TwoFaStrategy,
     GoogleStrategy,
     DiscordStrategy,
+    JwtAuthGuard,
+    SessionAuthGuard,
+    HybridAuthGuard,
   ],
 })
 export class AuthModule {}

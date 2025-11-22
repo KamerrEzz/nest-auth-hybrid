@@ -43,6 +43,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "passport-discord": "^0.1.4",
     "prisma": "^6.16.3",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
