@@ -29,4 +29,16 @@ export class UserService {
   async findById(id: string): Promise<UserEntity | null> {
     return await this.prisma.findUserById(id);
   }
+
+  async enable2FA(
+    userId: string,
+    totpSecretEnc: string,
+    backupCodes: string[],
+  ) {
+    await this.prisma.enable2FA(userId, totpSecretEnc, backupCodes);
+  }
+
+  async disable2FA(userId: string) {
+    await this.prisma.disable2FA(userId);
+  }
 }

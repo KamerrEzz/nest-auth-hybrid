@@ -25,4 +25,24 @@ export class PrismaRepository extends PrismaService {
     const result = await this.user.findUnique({ where: { id } });
     return (result ?? null) as User | null;
   }
+
+  async enable2FA(
+    userId: string,
+    totpSecretEnc: string,
+    backupCodes: string[],
+  ) {
+    const result = await this.user.update({
+      where: { id: userId },
+      data: { has2FA: true, totpSecret: totpSecretEnc, backupCodes },
+    });
+    return result as User;
+  }
+
+  async disable2FA(userId: string) {
+    const result = await this.user.update({
+      where: { id: userId },
+      data: { has2FA: false, totpSecret: null, backupCodes: [] },
+    });
+    return result as User;
+  }
 }

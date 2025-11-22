@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class VerifyOtpDto {
   @IsString()
@@ -6,4 +6,8 @@ export class VerifyOtpDto {
 
   @IsString()
   otpCode!: string;
+
+  @IsOptional()
+  @IsString()
+  totpCode?: string;
 }

@@ -9,6 +9,7 @@ import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserService } from '../../modules/user/user.service';
 import type { Response } from 'express';
+import { randomUUID } from 'crypto';
 
 @Controller('auth')
 export class AuthController {
@@ -37,6 +38,14 @@ export class AuthController {
         sameSite: 'strict',
         maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
       });
+      const csrfToken = randomUUID();
+      res.cookie('csrfToken', csrfToken, {
+        httpOnly: false,
+        secure: isProd,
+        sameSite: 'strict',
+        maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+      });
+      (result as any).csrfToken = csrfToken;
     }
     return result;
   }
@@ -46,7 +55,11 @@ export class AuthController {
     @Body() dto: VerifyOtpDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.verifyOtp(dto.tempToken, dto.otpCode);
+    const result = await this.auth.verifyOtp(
+      dto.tempToken,
+      dto.otpCode,
+      dto.totpCode,
+    );
     const sid = (result as { sessionId?: string }).sessionId;
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('sessionId', sid ?? '', {
@@ -55,7 +68,51 @@ export class AuthController {
       sameSite: 'strict',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
+    const csrfToken = randomUUID();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    (result as any).csrfToken = csrfToken;
     return result;
+  }
+
+  @Post('enable-2fa')
+  @UseGuards(HybridAuthGuard)
+  async enable2fa(@CurrentUser() user?: { id: string }) {
+    if (!user) return { ok: false };
+    return this.auth.enable2fa(user.id, user.id);
+  }
+
+  @Post('verify-2fa')
+  @UseGuards(HybridAuthGuard)
+  async verify2fa(
+    @CurrentUser() user: { id: string },
+    @Body() body: { code: string },
+  ) {
+    return this.auth.verify2fa(user.id, body.code);
+  }
+
+  @Post('disable-2fa')
+  @UseGuards(HybridAuthGuard)
+  async disable2fa(@CurrentUser() user: { id: string }) {
+    await this.auth.disable2fa(user.id);
+    return { ok: true };
+  }
+
+  @Get('csrf')
+  csrf(@Res({ passthrough: true }) res: Response) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const csrfToken = randomUUID();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
+    });
+    return { csrfToken };
   }
 
   @Post('refresh')
