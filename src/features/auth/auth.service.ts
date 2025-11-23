@@ -147,18 +147,11 @@ export class AuthService {
   async enable2fa(userId: string, label: string) {
     const s = this.totp.generateSecret(label);
     const enc = this.totp.encryptSecret(s.base32);
-    const rawBackups = Array.from({ length: 10 }, () =>
-      Math.random().toString(36).slice(2, 10),
-    );
     const user = await this.users.findById(userId);
     if (!user) throw new UnauthorizedException();
-    const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
-    const hashed = await Promise.all(
-      rawBackups.map((code) => bcrypt.hash(code, rounds)),
-    );
-    await this.users.enable2FA(userId, enc, hashed);
+    await this.users.enable2FA(userId, enc);
     const qr = await this.totp.generateQrDataUrl(s.otpauthUrl);
-    return { qrCode: qr, secret: s.base32, backupCodes: rawBackups };
+    return { qrCode: qr, secret: s.base32 };
   }
 
   async disable2fa(
@@ -195,8 +188,15 @@ export class AuthService {
     const secret = this.totp.decryptSecret(user.totpSecret);
     const ok = this.totp.verify(code, secret);
     if (!ok) throw new UnauthorizedException();
-    await this.users.confirm2FA(userId);
-    return { ok: true };
+    const rawBackups = Array.from({ length: 10 }, () =>
+      Math.random().toString(36).slice(2, 10),
+    );
+    const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
+    const hashed = await Promise.all(
+      rawBackups.map((x) => bcrypt.hash(x, rounds)),
+    );
+    await this.users.confirm2FA(userId, hashed);
+    return { ok: true, backupCodes: rawBackups };
   }
 
   async refresh(refreshToken: string) {

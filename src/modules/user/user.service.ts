@@ -30,12 +30,8 @@ export class UserService {
     return await this.prisma.findUserById(id);
   }
 
-  async enable2FA(
-    userId: string,
-    totpSecretEnc: string,
-    backupCodes: string[],
-  ) {
-    await this.prisma.enable2FA(userId, totpSecretEnc, backupCodes);
+  async enable2FA(userId: string, totpSecretEnc: string) {
+    await this.prisma.enable2FA(userId, totpSecretEnc);
   }
 
   async disable2FA(userId: string) {
@@ -60,8 +56,8 @@ export class UserService {
     return true;
   }
 
-  async confirm2FA(userId: string) {
-    await this.prisma.confirm2FA(userId);
+  async confirm2FA(userId: string, backupCodes: string[]) {
+    await this.prisma.confirm2FA(userId, backupCodes);
   }
 
   async cancel2FA(userId: string) {
