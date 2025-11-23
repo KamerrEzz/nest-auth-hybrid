@@ -15,7 +15,8 @@
     { "key": "refreshToken", "value": "" },
     { "key": "csrfToken", "value": "" },
     { "key": "sessionId", "value": "" },
-    { "key": "tempToken", "value": "" }
+    { "key": "tempToken", "value": "" },
+    { "key": "sessionToRevoke", "value": "" }
   ],
   "item": [
     {
@@ -252,7 +253,24 @@
           { "key": "Cookie", "value": "sessionId={{sessionId}}" }
         ],
         "url": "{{baseUrl}}/auth/sessions"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const list = pm.response.json();",
+              "pm.test('lista de sesiones es un array', function(){ pm.expect(Array.isArray(list)).to.be.true; });",
+              "if (Array.isArray(list) && list.length) {",
+              "  const s = list[0];",
+              "  pm.test('sesión tiene ipAddress', function(){ pm.expect(s).to.have.property('ipAddress'); });",
+              "  pm.test('sesión tiene userAgent', function(){ pm.expect(s).to.have.property('userAgent'); });",
+              "  pm.test('sesión tiene lastActive', function(){ pm.expect(s).to.have.property('lastActive'); });",
+              "}"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "DELETE /auth/sessions/:id",
@@ -268,6 +286,123 @@
           "path": ["auth","sessions","{{sessionToRevoke}}"]
         }
       }
+    },
+    {
+      "name": "DELETE /auth/sessions (revocar todas)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "X-CSRF-Token", "value": "{{csrfToken}}" },
+          { "key": "Cookie", "value": "csrfToken={{csrfToken}}; sessionId={{sessionId}}" }
+        ],
+        "url": "{{baseUrl}}/auth/sessions"
+      }
+    },
+    {
+      "name": "GET /auth/2fa/status",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Cookie", "value": "sessionId={{sessionId}}" }
+        ],
+        "url": "{{baseUrl}}/auth/2fa/status"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "pm.test('campo enabled presente', function(){ pm.expect(res).to.have.property('enabled'); });",
+              "pm.test('campo hasSecret presente', function(){ pm.expect(res).to.have.property('hasSecret'); });",
+              "pm.test('campo backupCount presente', function(){ pm.expect(res).to.have.property('backupCount'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /auth/2fa/cancel",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-CSRF-Token", "value": "{{csrfToken}}" },
+          { "key": "Cookie", "value": "csrfToken={{csrfToken}}; sessionId={{sessionId}}" }
+        ],
+        "url": "{{baseUrl}}/auth/2fa/cancel"
+      }
+    },
+    {
+      "name": "GET /auth/google",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/auth/google"
+      }
+    },
+    {
+      "name": "GET /auth/google/callback",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/auth/google/callback"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let setCookie = pm.response.headers.get('Set-Cookie') || '';",
+              "const csrfMatch = setCookie.match(/csrfToken=([^;]+)/);",
+              "if (csrfMatch) pm.environment.set('csrfToken', csrfMatch[1]);",
+              "const sidMatch = setCookie.match(/sessionId=([^;]+)/);",
+              "if (sidMatch) pm.environment.set('sessionId', sidMatch[1]);",
+              "const res = pm.response.json();",
+              "if (res && res.requiresOtp) {",
+              "  pm.environment.set('tempToken', res.tempToken);",
+              "  pm.test('OAuth requiere OTP', function(){ pm.expect(res.requiresOtp).to.eql(true); });",
+              "} else if (res && res.accessToken) {",
+              "  pm.environment.set('accessToken', res.accessToken);",
+              "  if (res.refreshToken) pm.environment.set('refreshToken', res.refreshToken);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /auth/discord",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/auth/discord"
+      }
+    },
+    {
+      "name": "GET /auth/discord/callback",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/auth/discord/callback"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let setCookie = pm.response.headers.get('Set-Cookie') || '';",
+              "const csrfMatch = setCookie.match(/csrfToken=([^;]+)/);",
+              "if (csrfMatch) pm.environment.set('csrfToken', csrfMatch[1]);",
+              "const sidMatch = setCookie.match(/sessionId=([^;]+)/);",
+              "if (sidMatch) pm.environment.set('sessionId', sidMatch[1]);",
+              "const res = pm.response.json();",
+              "if (res && res.requiresOtp) {",
+              "  pm.environment.set('tempToken', res.tempToken);",
+              "  pm.test('OAuth requiere OTP', function(){ pm.expect(res.requiresOtp).to.eql(true); });",
+              "} else if (res && res.accessToken) {",
+              "  pm.environment.set('accessToken', res.accessToken);",
+              "  if (res.refreshToken) pm.environment.set('refreshToken', res.refreshToken);",
+              "}"
+            ]
+          }
+        }
+      ]
     }
   ]
 }
