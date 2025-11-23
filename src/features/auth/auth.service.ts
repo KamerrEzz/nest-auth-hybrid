@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { UserService } from '../../modules/user/user.service';
 import { TokenService } from '../../modules/token/token.service';
 import { SessionService } from '../../modules/session/session.service';
@@ -47,7 +51,7 @@ export class AuthService {
     meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<RegisterResult> {
     const exists = await this.users.findByEmail(email);
-    if (exists) throw new UnauthorizedException();
+    if (exists) throw new ConflictException('Email ya registrado');
     const user = await this.users.create({ email, password, name });
     const session = await this.sessions.create(
       user.id,
