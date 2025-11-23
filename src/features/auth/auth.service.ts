@@ -240,4 +240,8 @@ export class AuthService {
   async revokeAllSessions(userId: string) {
     await this.sessions.revokeAllByUser(userId);
   }
+
+  async revokeOtherSessions(userId: string, keepId: string) {
+    await this.sessions.revokeAllByUserExcept(userId, keepId);
+  }
 }

@@ -27,6 +27,7 @@ import { UserResponseDto } from '../../modules/user/dto/user-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { instanceToPlain } from 'class-transformer';
 import type { Request as ExpressRequest } from 'express';
+import type { SessionEntity } from '../../modules/session/entities/session.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -265,9 +266,14 @@ export class AuthController {
 
   @Get('sessions')
   @UseGuards(HybridAuthGuard)
-  async sessions(@CurrentUser() user?: { id: string }) {
-    if (!user) return [];
-    return this.auth.listSessions(user.id);
+  async sessions(
+    @CurrentUser() user?: { id: string },
+    @Req() req?: ExpressRequest,
+  ): Promise<{ currentId: string; items: SessionEntity[] }> {
+    const items = user ? await this.auth.listSessions(user.id) : [];
+    const rawSid: unknown = req?.cookies?.sessionId;
+    const currentId = typeof rawSid === 'string' ? rawSid : '';
+    return { currentId, items };
   }
 
   @Delete('sessions')
@@ -282,6 +288,18 @@ export class AuthController {
   @UseGuards(HybridAuthGuard)
   async revoke(@Param('id') id: string) {
     await this.auth.revokeSession(id);
+    return { ok: true };
+  }
+
+  @Delete('sessions/others')
+  @UseGuards(HybridAuthGuard)
+  async revokeOthers(
+    @CurrentUser() user: { id: string },
+    @Req() req: ExpressRequest,
+  ) {
+    const rawSid: unknown = req.cookies?.sessionId;
+    const currentId = typeof rawSid === 'string' ? rawSid : '';
+    await this.auth.revokeOtherSessions(user.id, currentId);
     return { ok: true };
   }
   @Get('google')

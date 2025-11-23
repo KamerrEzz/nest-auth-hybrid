@@ -70,6 +70,32 @@ export class SessionService {
     if (toDelete.length) await this.redis.del(...toDelete);
   }
 
+  async revokeAllByUserExcept(userId: string, keepId: string) {
+    let cursor = '0';
+    const toDelete: string[] = [];
+    do {
+      const res = await this.redis.scan(
+        cursor,
+        'MATCH',
+        'session:*',
+        'COUNT',
+        100,
+      );
+      cursor = res[0];
+      const keys = res[1];
+      if (keys.length) {
+        const vals = await this.redis.mget(...keys);
+        for (let i = 0; i < vals.length; i++) {
+          const v = vals[i];
+          if (!v) continue;
+          const s = JSON.parse(v) as SessionEntity;
+          if (s.userId === userId && s.id !== keepId) toDelete.push(keys[i]);
+        }
+      }
+    } while (cursor !== '0');
+    if (toDelete.length) await this.redis.del(...toDelete);
+  }
+
   async listByUser(userId: string) {
     const items: SessionEntity[] = [];
     let cursor = '0';

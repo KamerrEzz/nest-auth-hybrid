@@ -188,10 +188,17 @@ Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
 GET {{baseUrl}}/auth/sessions
 Cookie: sessionId={{sessionId}}
 
-# Retorna: array de sesiones con { id, ipAddress, userAgent, lastActive }
+# Retorna: { currentId, items: [ { id, ipAddress, userAgent, lastActive } ] }
 
 ### Sesiones - Revocar todas
 DELETE {{baseUrl}}/auth/sessions
+X-CSRF-Token: {{csrfToken}}
+Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
+
+# Retorna: { ok: true }
+
+### Sesiones - Revocar otras (mantener actual)
+DELETE {{baseUrl}}/auth/sessions/others
 X-CSRF-Token: {{csrfToken}}
 Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
 
