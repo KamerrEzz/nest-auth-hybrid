@@ -211,6 +211,38 @@ Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
 
 # Retorna: { ok: true }
 
+### Notas - Crear
+POST {{baseUrl}}/notes
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
+
+{
+  "title": "Mi nota",
+  "content": "Contenido de prueba",
+  "secure": true
+}
+
+# Retorna: Note con id
+
+### Notas - Listar (sin TOTP)
+GET {{baseUrl}}/notes
+Cookie: sessionId={{sessionId}}
+
+# Retorna: solo notas no seguras si el usuario tiene 2FA
+
+### Notas - Listar (con TOTP)
+GET {{baseUrl}}/notes?totpCode={{totpCode}}
+Cookie: sessionId={{sessionId}}
+
+# Retorna: incluye notas seguras si TOTP válido
+
+### Notas - Obtener por id (con TOTP opcional)
+GET {{baseUrl}}/notes/{{noteId}}?totpCode={{totpCode}}
+Cookie: sessionId={{sessionId}}
+
+# Si la nota es segura y el usuario tiene 2FA: requiere TOTP válido
+
 ### OAuth - Google (inicio)
 GET {{baseUrl}}/auth/google
 

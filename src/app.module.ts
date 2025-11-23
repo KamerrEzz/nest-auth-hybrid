@@ -15,6 +15,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { CsrfGuard } from './common/guards/csrf.guard';
 import { PassportModule } from '@nestjs/passport';
+import { NoteModule } from './modules/note/note.module';
+import { NotesModule } from './features/notes/notes.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { PassportModule } from '@nestjs/passport';
     PassportModule,
     UserModule,
     AuthModule,
+    NoteModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [

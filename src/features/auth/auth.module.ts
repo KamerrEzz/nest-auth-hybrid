@@ -39,5 +39,6 @@ import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
     SessionAuthGuard,
     HybridAuthGuard,
   ],
+  exports: [JwtAuthGuard, SessionAuthGuard, HybridAuthGuard],
 })
 export class AuthModule {}
