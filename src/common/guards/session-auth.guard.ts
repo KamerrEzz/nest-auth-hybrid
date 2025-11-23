@@ -17,6 +17,7 @@ export class SessionAuthGuard implements CanActivate {
     if (!sid) throw new UnauthorizedException();
     const session = await this.sessions.get(sid);
     if (!session) throw new UnauthorizedException();
+    await this.sessions.touch(sid);
     req.user = { id: session.userId };
     return true;
   }

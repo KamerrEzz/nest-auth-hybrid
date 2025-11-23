@@ -44,23 +44,28 @@ export class AuthService {
     email: string,
     password: string,
     name?: string,
+    meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<RegisterResult> {
     const exists = await this.users.findByEmail(email);
     if (exists) throw new UnauthorizedException();
     const user = await this.users.create({ email, password, name });
-    const accessToken = await this.tokens.signAccess({ sub: user.id });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     const session = await this.sessions.create(
       user.id,
       this.config.get<number>('session.maxAge')!,
-      {},
+      meta ?? {},
     );
+    const accessToken = await this.tokens.signAccess({
+      sub: user.id,
+      sid: session.id,
+    });
+    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
   async login(
     email: string,
     password: string,
+    meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<LoginSuccess | RequiresOtp> {
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException();
@@ -71,13 +76,16 @@ export class AuthService {
       await this.email.sendOtp(user.email, rec.code);
       return { requiresOtp: true, tempToken: rec.tempToken };
     }
-    const accessToken = await this.tokens.signAccess({ sub: user.id });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     const session = await this.sessions.create(
       user.id,
       this.config.get<number>('session.maxAge')!,
-      {},
+      meta ?? {},
     );
+    const accessToken = await this.tokens.signAccess({
+      sub: user.id,
+      sid: session.id,
+    });
+    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
@@ -85,6 +93,7 @@ export class AuthService {
     tempToken: string,
     otpCode: string,
     totpCode?: string,
+    meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<LoginSuccess> {
     const email = await this.otp.verify(tempToken, otpCode);
     if (!email) throw new UnauthorizedException();
@@ -95,27 +104,44 @@ export class AuthService {
       const ok = totpCode ? this.totp.verify(totpCode, secret) : false;
       if (!ok) throw new UnauthorizedException();
     }
-    const accessToken = await this.tokens.signAccess({ sub: user.id });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     const session = await this.sessions.create(
       user.id,
       this.config.get<number>('session.maxAge')!,
-      {},
+      meta ?? {},
     );
+    const accessToken = await this.tokens.signAccess({
+      sub: user.id,
+      sid: session.id,
+    });
+    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
-  async issueForUserId(userId: string): Promise<LoginSuccess> {
+  async issueForUserId(
+    userId: string,
+    meta?: { ipAddress?: string; userAgent?: string; location?: string },
+  ): Promise<LoginSuccess> {
     const user = await this.users.findById(userId);
     if (!user) throw new UnauthorizedException();
-    const accessToken = await this.tokens.signAccess({ sub: user.id });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     const session = await this.sessions.create(
       user.id,
       this.config.get<number>('session.maxAge')!,
-      {},
+      meta ?? {},
     );
+    const accessToken = await this.tokens.signAccess({
+      sub: user.id,
+      sid: session.id,
+    });
+    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
     return { accessToken, refreshToken, sessionId: session.id, user };
+  }
+
+  async begin2faForUserId(userId: string): Promise<RequiresOtp> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    const rec = await this.otp.generate(user.email);
+    await this.email.sendOtp(user.email, rec.code);
+    return { requiresOtp: true, tempToken: rec.tempToken };
   }
 
   async enable2fa(userId: string, label: string) {
@@ -187,5 +213,9 @@ export class AuthService {
 
   async revokeSession(id: string) {
     await this.sessions.revoke(id);
+  }
+
+  async revokeAllSessions(userId: string) {
+    await this.sessions.revokeAllByUser(userId);
   }
 }

@@ -6,6 +6,7 @@ import {
   Post,
   Res,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { Delete, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -24,7 +25,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { UserResponseDto } from '../../modules/user/dto/user-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { instanceToPlain } from 'class-transformer';
-import { Request } from 'express';
+import type { Request as ExpressRequest } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -66,8 +67,12 @@ export class AuthController {
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: ExpressRequest,
   ): Promise<RegisterResponseDto> {
-    const result = await this.auth.register(dto.email, dto.password, dto.name);
+    const result = await this.auth.register(dto.email, dto.password, dto.name, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('sessionId', result.sessionId, {
       httpOnly: true,
@@ -96,8 +101,12 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: ExpressRequest,
   ): Promise<AuthResponseDto | { requiresOtp: true; tempToken: string }> {
-    const result = await this.auth.login(dto.email, dto.password);
+    const result = await this.auth.login(dto.email, dto.password, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
     if ('requiresOtp' in result) {
       return { requiresOtp: true, tempToken: result.tempToken };
     }
@@ -133,11 +142,13 @@ export class AuthController {
   async verifyOtp(
     @Body() dto: VerifyOtpDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: ExpressRequest,
   ): Promise<AuthResponseDto> {
     const result = await this.auth.verifyOtp(
       dto.tempToken,
       dto.otpCode,
       dto.totpCode,
+      { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
     );
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('sessionId', result.sessionId ?? '', {
@@ -251,6 +262,14 @@ export class AuthController {
     return this.auth.listSessions(user.id);
   }
 
+  @Delete('sessions')
+  @UseGuards(HybridAuthGuard)
+  async revokeAll(@CurrentUser() user?: { id: string }) {
+    if (!user) return { ok: false };
+    await this.auth.revokeAllSessions(user.id);
+    return { ok: true };
+  }
+
   @Delete('sessions/:id')
   @UseGuards(HybridAuthGuard)
   async revoke(@Param('id') id: string) {
@@ -268,8 +287,17 @@ export class AuthController {
   async googleCallback(
     @CurrentUser() user: { id: string },
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto> {
-    const result = await this.auth.issueForUserId(user.id);
+    @Req() req: ExpressRequest,
+  ): Promise<AuthResponseDto | { requiresOtp: true; tempToken: string }> {
+    const entity = await this.users.findById(user.id);
+    if (entity?.has2FA) {
+      const step = await this.auth.begin2faForUserId(user.id);
+      return step;
+    }
+    const result = await this.auth.issueForUserId(user.id, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('sessionId', result.sessionId, {
       httpOnly: true,
@@ -307,8 +335,17 @@ export class AuthController {
   async discordCallback(
     @CurrentUser() user: { id: string },
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto> {
-    const result = await this.auth.issueForUserId(user.id);
+    @Req() req: ExpressRequest,
+  ): Promise<AuthResponseDto | { requiresOtp: true; tempToken: string }> {
+    const entity = await this.users.findById(user.id);
+    if (entity?.has2FA) {
+      const step = await this.auth.begin2faForUserId(user.id);
+      return step;
+    }
+    const result = await this.auth.issueForUserId(user.id, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('sessionId', result.sessionId, {
       httpOnly: true,
