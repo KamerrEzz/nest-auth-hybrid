@@ -200,6 +200,27 @@ export class AuthService {
     return { ok: true, backupCodes: rawBackups };
   }
 
+  async changePassword(
+    userId: string,
+    body: { currentPassword: string; newPassword: string; totpCode?: string },
+  ) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    const okCurrent = await bcrypt.compare(body.currentPassword, user.password);
+    if (!okCurrent) throw new UnauthorizedException();
+    if (user.has2FA && user.totpSecret) {
+      const secret = this.totp.decryptSecret(user.totpSecret);
+      const okTotp = body.totpCode
+        ? this.totp.verify(body.totpCode, secret)
+        : false;
+      if (!okTotp) throw new UnauthorizedException();
+    }
+    const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
+    const newHash = await bcrypt.hash(body.newPassword, rounds);
+    await this.users.updatePassword(userId, newHash);
+    return { ok: true };
+  }
+
   async refresh(refreshToken: string) {
     const payload = (await this.tokens.verifyRefresh(refreshToken)) as {
       sub: string;

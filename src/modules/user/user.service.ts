@@ -63,4 +63,8 @@ export class UserService {
   async cancel2FA(userId: string) {
     await this.prisma.cancel2FA(userId);
   }
+
+  async updatePassword(userId: string, passwordHash: string) {
+    await this.prisma.updateUserPassword(userId, passwordHash);
+  }
 }

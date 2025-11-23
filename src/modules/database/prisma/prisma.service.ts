@@ -50,6 +50,14 @@ export class PrismaRepository extends PrismaService {
     return result;
   }
 
+  async updateUserPassword(userId: string, password: string) {
+    const result = await this.user.update({
+      where: { id: userId },
+      data: { password },
+    });
+    return result;
+  }
+
   async confirm2FA(userId: string, backupCodes: string[]) {
     const result = await this.user.update({
       where: { id: userId },

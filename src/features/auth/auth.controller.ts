@@ -13,7 +13,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
+// import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -229,6 +230,15 @@ export class AuthController {
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
     return { csrfToken };
+  }
+
+  @Post('change-password')
+  @UseGuards(HybridAuthGuard)
+  async changePassword(
+    @CurrentUser() user: { id: string },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(user.id, dto);
   }
 
   @Post('refresh')

@@ -109,6 +109,22 @@ Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
 
 # Valida: CSRF; retorna { ok: true }; limpia cookie sessionId
 
+### Cambiar contraseña
+POST {{baseUrl}}/auth/change-password
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+Cookie: csrfToken={{csrfToken}}; sessionId={{sessionId}}
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "NuevaPassword123!",
+  "totpCode": "{{totpCode}}"
+}
+
+# Valida: sesión, password actual correcta.
+# Si 2FA activo: requiere TOTP válido.
+# Retorna: { ok: true }
+
 ### 2FA - Enable: inicia proceso de habilitar 2FA
 POST {{baseUrl}}/auth/enable-2fa
 X-CSRF-Token: {{csrfToken}}
