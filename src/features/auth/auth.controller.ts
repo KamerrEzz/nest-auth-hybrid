@@ -140,16 +140,14 @@ export class AuthController {
   @Post('verify-otp')
   @UseGuards(AuthGuard('twofa'))
   async verifyOtp(
-    @Body() dto: VerifyOtpDto,
+    @CurrentUser() user: { id: string },
     @Res({ passthrough: true }) res: Response,
     @Req() req: ExpressRequest,
   ): Promise<AuthResponseDto> {
-    const result = await this.auth.verifyOtp(
-      dto.tempToken,
-      dto.otpCode,
-      dto.totpCode,
-      { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
-    );
+    const result = await this.auth.issueForUserId(user.id, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('sessionId', result.sessionId ?? '', {
       httpOnly: true,

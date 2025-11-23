@@ -24,7 +24,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) throw new UnauthorizedException();
     if (user.has2FA) {
-      const rec = await this.otp.generate(user.email);
+      const rec = await this.otp.generateTicket(user.email);
       return { requiresOtp: true, tempToken: rec.tempToken };
     }
     return { id: user.id };

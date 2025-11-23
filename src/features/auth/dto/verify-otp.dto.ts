@@ -4,8 +4,9 @@ export class VerifyOtpDto {
   @IsString()
   tempToken!: string;
 
+  @IsOptional()
   @IsString()
-  otpCode!: string;
+  otpCode?: string;
 
   @IsOptional()
   @IsString()

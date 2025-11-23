@@ -72,8 +72,7 @@ export class AuthService {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) throw new UnauthorizedException();
     if (user.has2FA) {
-      const rec = await this.otp.generate(user.email);
-      await this.email.sendOtp(user.email, rec.code);
+      const rec = await this.otp.generateTicket(user.email);
       return { requiresOtp: true, tempToken: rec.tempToken };
     }
     const session = await this.sessions.create(
@@ -91,11 +90,13 @@ export class AuthService {
 
   async verifyOtp(
     tempToken: string,
-    otpCode: string,
+    otpCode?: string,
     totpCode?: string,
     meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<LoginSuccess> {
-    const email = await this.otp.verify(tempToken, otpCode);
+    const email = otpCode
+      ? await this.otp.verify(tempToken, otpCode)
+      : await this.otp.resolve(tempToken);
     if (!email) throw new UnauthorizedException();
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException();

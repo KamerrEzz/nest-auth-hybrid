@@ -25,7 +25,9 @@ export class TwoFaStrategy extends PassportStrategy(CustomStrategy, 'twofa') {
     const tempToken = body.tempToken ?? '';
     const otpCode = body.otpCode ?? '';
     const totpCode = body.totpCode ?? '';
-    const email = await this.otp.verify(tempToken, otpCode);
+    const email = otpCode
+      ? await this.otp.verify(tempToken, otpCode)
+      : await this.otp.resolve(tempToken);
     if (!email) throw new UnauthorizedException();
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException();

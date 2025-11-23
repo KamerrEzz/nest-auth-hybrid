@@ -71,7 +71,6 @@ Cookie: csrfToken={{csrfToken}}
 
 {
   "tempToken": "{{tempToken}}",
-  "otpCode": "{{otpCode}}",
   "totpCode": "{{totpCode}}"
 }
 
