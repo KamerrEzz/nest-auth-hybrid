@@ -38,9 +38,40 @@ export class OtpService {
   async verify(tempToken: string, code: string) {
     const raw = await this.redis.get(this.key(tempToken));
     if (!raw) return null;
-    const rec = JSON.parse(raw) as { code?: string; email: string };
+
+    const rec = JSON.parse(raw) as {
+      code?: string;
+      email: string;
+      attempts?: number;
+      expiresAt: number;
+    };
+
+    // Validar expiración explícitamente
+    if (rec.expiresAt < Date.now()) {
+      await this.redis.del(this.key(tempToken));
+      return null;
+    }
+
+    // Incrementar intentos
+    const attempts = (rec.attempts || 0) + 1;
+
+    // Máximo 3 intentos
+    if (attempts > 3) {
+      await this.redis.del(this.key(tempToken));
+      throw new Error('Too many failed attempts');
+    }
+
     const ok = rec.code === code;
-    if (!ok) return null;
+
+    if (!ok) {
+      // Guardar intentos fallidos
+      rec.attempts = attempts;
+      const ttl = Math.max(1, Math.floor((rec.expiresAt - Date.now()) / 1000));
+      await this.redis.setex(this.key(tempToken), ttl, JSON.stringify(rec));
+      return null;
+    }
+
+    // Código correcto, eliminar
     await this.redis.del(this.key(tempToken));
     return rec.email;
   }

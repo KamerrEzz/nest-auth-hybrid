@@ -8,14 +8,21 @@ import type { Request } from 'express';
 
 @Injectable()
 export class CsrfGuard implements CanActivate {
-  canActivate(ctx: ExecutionContext) {
+  canActivate(ctx: ExecutionContext): boolean {
     const req = ctx.switchToHttp().getRequest<Request>();
-    const method = req.method.toUpperCase();
-    if (method === 'GET') return true;
-    if (method === 'HEAD' || method === 'OPTIONS') return true;
-    const header = req.headers['x-csrf-token'] as string | undefined;
-    const cookie = (req.cookies?.csrfToken ?? '') as string;
-    if (!header || !cookie || header !== cookie) throw new ForbiddenException();
+
+    // Solo validar en métodos que modifican estado
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      return true;
+    }
+
+    const cookieToken = req.cookies?.csrfToken as string | undefined;
+    const headerToken = req.headers['x-csrf-token'] as string | undefined;
+
+    if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+      throw new ForbiddenException('Invalid CSRF token');
+    }
+
     return true;
   }
 }

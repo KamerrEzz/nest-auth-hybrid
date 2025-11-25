@@ -17,7 +17,10 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
+import { CsrfGuard } from '../../common/guards/csrf.guard';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 import { UserService } from '../../modules/user/user.service';
 import type { Response } from 'express';
 import { randomUUID } from 'crypto';
@@ -35,7 +38,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly users: UserService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   private parseDuration(value: string | number | undefined) {
     if (typeof value === 'number') return value;
@@ -66,6 +69,8 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(201)
+  @RateLimit(5, 300)
+  @UseGuards(RateLimitGuard)
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
@@ -99,7 +104,8 @@ export class AuthController {
   }
 
   @Post('login')
-  @UseGuards(AuthGuard('local'))
+  @RateLimit(5, 60)
+  @UseGuards(RateLimitGuard, AuthGuard('local'))
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -140,7 +146,8 @@ export class AuthController {
   }
 
   @Post('verify-otp')
-  @UseGuards(AuthGuard('twofa'))
+  @RateLimit(3, 60)
+  @UseGuards(RateLimitGuard, AuthGuard('twofa'))
   async verifyOtp(
     @CurrentUser() user: { id: string },
     @Res({ passthrough: true }) res: Response,
@@ -234,7 +241,7 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async changePassword(
     @CurrentUser() user: { id: string },
     @Body() dto: ChangePasswordDto,

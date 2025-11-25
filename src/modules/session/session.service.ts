@@ -27,102 +27,97 @@ export class SessionService {
       userAgent: meta?.userAgent,
       lastActive: Date.now(),
     };
+
+    const ttlSec = Math.floor(ttlMs / 1000);
+
+    // Guardar sesión
     await this.redis.setex(
       this.key(id),
-      Math.floor(ttlMs / 1000),
+      ttlSec,
       JSON.stringify(session),
     );
+
+    // Indexar por usuario usando SET de Redis
+    await this.redis.sadd(this.userSessionsKey(userId), id);
+    await this.redis.expire(this.userSessionsKey(userId), ttlSec);
+
     return session;
   }
 
   async get(id: string) {
     const raw = await this.redis.get(this.key(id));
-    return raw ? (JSON.parse(raw) as SessionEntity) : null;
+    if (!raw) return null;
+
+    const session = JSON.parse(raw) as SessionEntity;
+
+    // Validar expiración explícitamente (además del TTL de Redis)
+    if (session.expiresAt < Date.now()) {
+      await this.redis.del(this.key(id));
+      return null;
+    }
+
+    return session;
   }
 
   async revoke(id: string) {
+    const session = await this.get(id);
+    if (session) {
+      await this.redis.srem(this.userSessionsKey(session.userId), id);
+    }
     await this.redis.del(this.key(id));
   }
 
   async revokeAllByUser(userId: string) {
-    let cursor = '0';
-    const toDelete: string[] = [];
-    do {
-      const res = await this.redis.scan(
-        cursor,
-        'MATCH',
-        'session:*',
-        'COUNT',
-        100,
-      );
-      cursor = res[0];
-      const keys = res[1];
-      if (keys.length) {
-        const vals = await this.redis.mget(...keys);
-        for (let i = 0; i < vals.length; i++) {
-          const v = vals[i];
-          if (!v) continue;
-          const s = JSON.parse(v) as SessionEntity;
-          if (s.userId === userId) toDelete.push(keys[i]);
-        }
-      }
-    } while (cursor !== '0');
-    if (toDelete.length) await this.redis.del(...toDelete);
+    const sessionIds = await this.redis.smembers(this.userSessionsKey(userId));
+
+    if (sessionIds.length === 0) return;
+
+    // Usar pipeline para eliminar en batch
+    const pipeline = this.redis.pipeline();
+    sessionIds.forEach((id) => pipeline.del(this.key(id)));
+    pipeline.del(this.userSessionsKey(userId));
+    await pipeline.exec();
   }
 
   async revokeAllByUserExcept(userId: string, keepId: string) {
-    let cursor = '0';
-    const toDelete: string[] = [];
-    do {
-      const res = await this.redis.scan(
-        cursor,
-        'MATCH',
-        'session:*',
-        'COUNT',
-        100,
-      );
-      cursor = res[0];
-      const keys = res[1];
-      if (keys.length) {
-        const vals = await this.redis.mget(...keys);
-        for (let i = 0; i < vals.length; i++) {
-          const v = vals[i];
-          if (!v) continue;
-          const s = JSON.parse(v) as SessionEntity;
-          if (s.userId === userId && s.id !== keepId) toDelete.push(keys[i]);
-        }
-      }
-    } while (cursor !== '0');
-    if (toDelete.length) await this.redis.del(...toDelete);
+    const sessionIds = await this.redis.smembers(this.userSessionsKey(userId));
+
+    if (sessionIds.length === 0) return;
+
+    // Filtrar sesiones excepto la que queremos mantener
+    const toDelete = sessionIds.filter((id) => id !== keepId);
+
+    if (toDelete.length === 0) return;
+
+    // Usar pipeline para eliminar en batch
+    const pipeline = this.redis.pipeline();
+    toDelete.forEach((id) => {
+      pipeline.del(this.key(id));
+      pipeline.srem(this.userSessionsKey(userId), id);
+    });
+    await pipeline.exec();
   }
 
   async listByUser(userId: string) {
-    const items: SessionEntity[] = [];
-    let cursor = '0';
-    do {
-      const res = await this.redis.scan(
-        cursor,
-        'MATCH',
-        'session:*',
-        'COUNT',
-        100,
-      );
-      cursor = res[0];
-      const keys = res[1];
-      if (keys.length) {
-        const vals = await this.redis.mget(...keys);
-        for (const v of vals) {
-          if (!v) continue;
-          const s = JSON.parse(v) as SessionEntity;
-          if (s.userId === userId) items.push(s);
-        }
-      }
-    } while (cursor !== '0');
-    return items;
+    const sessionIds = await this.redis.smembers(this.userSessionsKey(userId));
+
+    if (sessionIds.length === 0) return [];
+
+    const sessions = await this.redis.mget(
+      ...sessionIds.map((id) => this.key(id)),
+    );
+
+    return sessions
+      .filter((s) => s !== null)
+      .map((s) => JSON.parse(s!) as SessionEntity);
   }
 
   private key(id: string) {
     return `session:${id}`;
+  }
+
+  private userSessionsKey(userId: string) {
+    return `user:${userId}:sessions`;
   }
 
   async touch(id: string) {
