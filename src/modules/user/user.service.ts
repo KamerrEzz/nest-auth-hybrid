@@ -10,7 +10,7 @@ export class UserService {
   constructor(
     private prisma: PrismaRepository,
     private config: ConfigService,
-  ) {}
+  ) { }
 
   async create(data: CreateUserDto): Promise<UserEntity> {
     const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
@@ -42,6 +42,7 @@ export class UserService {
     const user = await this.findById(userId);
     if (!user || !user.backupCodes || user.backupCodes.length === 0)
       return false;
+
     let matchedIndex = -1;
     for (let i = 0; i < user.backupCodes.length; i++) {
       const ok = await bcrypt.compare(code, user.backupCodes[i]);
@@ -50,9 +51,26 @@ export class UserService {
         break;
       }
     }
+
     if (matchedIndex < 0) return false;
+
     const next = user.backupCodes.filter((_, i) => i !== matchedIndex);
     await this.prisma.updateBackupCodes(user.id, next);
+
+    // TODO: Implementar audit log cuando se cree el servicio
+    // await this.audit.log({
+    //   userId: user.id,
+    //   action: 'BACKUP_CODE_USED',
+    //   metadata: { remainingCodes: next.length },
+    //   timestamp: new Date(),
+    // });
+
+    // Notificar al usuario si quedan pocos códigos
+    // TODO: Descomentar cuando el servicio de email esté configurado
+    // if (next.length <= 2) {
+    //   await this.email.sendLowBackupCodesWarning(user.email, next.length);
+    // }
+
     return true;
   }
 

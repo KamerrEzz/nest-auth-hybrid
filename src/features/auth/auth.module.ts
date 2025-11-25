@@ -16,6 +16,7 @@ import { DiscordStrategy } from './strategies/discord.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SessionAuthGuard } from '../../common/guards/session-auth.guard';
 import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
+import { AuditModule } from '../../modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
     OtpModule,
     EmailModule,
     TotpModule,
+    AuditModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -41,4 +43,4 @@ import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
   ],
   exports: [JwtAuthGuard, SessionAuthGuard, HybridAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

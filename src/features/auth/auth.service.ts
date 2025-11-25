@@ -12,6 +12,9 @@ import { OtpService } from '../../modules/otp/otp.service';
 import { EmailService } from '../../modules/email/email.service';
 import { TotpService } from '../../modules/totp/totp.service';
 import type { UserEntity } from '../../common/types/auth.types';
+import { randomUUID } from 'crypto';
+import Redis from 'ioredis';
+import { AuditLogService } from '../../modules/audit/audit-log.service';
 
 export interface RegisterResult {
   user: UserEntity;
@@ -34,6 +37,8 @@ export interface RequiresOtp {
 
 @Injectable()
 export class AuthService {
+  private redis: Redis;
+
   constructor(
     private users: UserService,
     private tokens: TokenService,
@@ -42,7 +47,10 @@ export class AuthService {
     private otp: OtpService,
     private email: EmailService,
     private totp: TotpService,
-  ) {}
+    private audit: AuditLogService,
+  ) {
+    this.redis = new Redis(this.config.get<string>('cache.redisUrl')!);
+  }
 
   async register(
     email: string,
@@ -62,7 +70,11 @@ export class AuthService {
       sub: user.id,
       sid: session.id,
     });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
+    const jti = randomUUID();
+    const refreshToken = await this.tokens.signRefresh({
+      sub: user.id,
+      jti,
+    });
     return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
@@ -72,9 +84,25 @@ export class AuthService {
     meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<LoginSuccess | RequiresOtp> {
     const user = await this.users.findByEmail(email);
-    if (!user) throw new UnauthorizedException();
+    if (!user) {
+      await this.audit.logFailedLogin(
+        email,
+        'user_not_found',
+        meta?.ipAddress,
+        meta?.userAgent,
+      );
+      throw new UnauthorizedException();
+    }
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) throw new UnauthorizedException();
+    if (!ok) {
+      await this.audit.logFailedLogin(
+        email,
+        'invalid_password',
+        meta?.ipAddress,
+        meta?.userAgent,
+      );
+      throw new UnauthorizedException();
+    }
     if (user.has2FA) {
       const rec = await this.otp.generateTicket(user.email);
       return { requiresOtp: true, tempToken: rec.tempToken };
@@ -88,7 +116,16 @@ export class AuthService {
       sub: user.id,
       sid: session.id,
     });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
+    const jti = randomUUID();
+    const refreshToken = await this.tokens.signRefresh({
+      sub: user.id,
+      jti,
+    });
+    await this.audit.logSuccessfulLogin(
+      user.id,
+      meta?.ipAddress,
+      meta?.userAgent,
+    );
     return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
@@ -118,7 +155,11 @@ export class AuthService {
       sub: user.id,
       sid: session.id,
     });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
+    const jti = randomUUID();
+    const refreshToken = await this.tokens.signRefresh({
+      sub: user.id,
+      jti,
+    });
     return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
@@ -137,7 +178,11 @@ export class AuthService {
       sub: user.id,
       sid: session.id,
     });
-    const refreshToken = await this.tokens.signRefresh({ sub: user.id });
+    const jti = randomUUID();
+    const refreshToken = await this.tokens.signRefresh({
+      sub: user.id,
+      jti,
+    });
     return { accessToken, refreshToken, sessionId: session.id, user };
   }
 
@@ -207,6 +252,7 @@ export class AuthService {
   async changePassword(
     userId: string,
     body: { currentPassword: string; newPassword: string; totpCode?: string },
+    meta?: { ipAddress?: string; userAgent?: string },
   ) {
     const user = await this.users.findById(userId);
     if (!user) throw new UnauthorizedException();
@@ -222,15 +268,59 @@ export class AuthService {
     const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
     const newHash = await bcrypt.hash(body.newPassword, rounds);
     await this.users.updatePassword(userId, newHash);
+    await this.audit.logPasswordChange(userId, meta?.ipAddress, meta?.userAgent);
     return { ok: true };
   }
 
-  async refresh(refreshToken: string) {
+  async refresh(
+    refreshToken: string,
+    meta?: { ipAddress?: string; userAgent?: string },
+  ) {
     const payload = (await this.tokens.verifyRefresh(refreshToken)) as {
       sub: string;
+      jti?: string;
     };
-    const accessToken = await this.tokens.signAccess({ sub: payload.sub });
-    return { accessToken };
+
+    // Validar que el token no haya sido revocado
+    if (payload.jti) {
+      const isRevoked = await this.redis.get(`revoked:${payload.jti}`);
+      if (isRevoked) {
+        throw new UnauthorizedException('Token has been revoked');
+      }
+    }
+
+    const user = await this.users.findById(payload.sub);
+    if (!user) throw new UnauthorizedException();
+
+    // Crear nueva sesión
+    const session = await this.sessions.create(
+      user.id,
+      this.config.get<number>('session.maxAge')!,
+      meta ?? {},
+    );
+
+    // Generar NUEVOS tokens
+    const newAccessToken = await this.tokens.signAccess({
+      sub: user.id,
+      sid: session.id,
+    });
+
+    const newJti = randomUUID();
+    const newRefreshToken = await this.tokens.signRefresh({
+      sub: user.id,
+      jti: newJti,
+    });
+
+    // Revocar el refresh token anterior
+    if (payload.jti) {
+      const ttl = 7 * 24 * 60 * 60; // 7 días
+      await this.redis.setex(`revoked:${payload.jti}`, ttl, '1');
+    }
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 
   async listSessions(userId: string) {

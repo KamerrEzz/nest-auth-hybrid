@@ -245,13 +245,23 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: { id: string },
     @Body() dto: ChangePasswordDto,
+    @Req() req: ExpressRequest,
   ) {
-    return this.auth.changePassword(user.id, dto);
+    return this.auth.changePassword(user.id, dto, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 
   @Post('refresh')
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.auth.refresh(dto.refreshToken);
+  async refresh(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: ExpressRequest,
+  ) {
+    return this.auth.refresh(dto.refreshToken, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 
   @Get('me')
