@@ -6,7 +6,7 @@ export default registerAs('security', () => {
   if (!totpEncKey) {
     throw new Error(
       'TOTP_ENC_KEY must be set. ' +
-      'Generate a secure 256-bit key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"',
+        "Generate a secure 256-bit key with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     );
   }
 

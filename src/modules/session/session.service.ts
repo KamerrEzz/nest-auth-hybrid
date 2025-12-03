@@ -31,11 +31,7 @@ export class SessionService {
     const ttlSec = Math.floor(ttlMs / 1000);
 
     // Guardar sesión
-    await this.redis.setex(
-      this.key(id),
-      ttlSec,
-      JSON.stringify(session),
-    );
+    await this.redis.setex(this.key(id), ttlSec, JSON.stringify(session));
 
     // Indexar por usuario usando SET de Redis
     await this.redis.sadd(this.userSessionsKey(userId), id);
@@ -109,7 +105,7 @@ export class SessionService {
 
     return sessions
       .filter((s) => s !== null)
-      .map((s) => JSON.parse(s!) as SessionEntity);
+      .map((s) => JSON.parse(s) as SessionEntity);
   }
 
   private key(id: string) {

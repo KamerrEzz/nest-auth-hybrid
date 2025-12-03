@@ -8,4 +8,4 @@ export const RATE_LIMIT_KEY = 'rateLimit';
  * @param duration - Time window in seconds
  */
 export const RateLimit = (points: number, duration: number) =>
-    SetMetadata(RATE_LIMIT_KEY, { points, duration });
+  SetMetadata(RATE_LIMIT_KEY, { points, duration });

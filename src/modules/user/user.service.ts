@@ -10,7 +10,7 @@ export class UserService {
   constructor(
     private prisma: PrismaRepository,
     private config: ConfigService,
-  ) { }
+  ) {}
 
   async create(data: CreateUserDto): Promise<UserEntity> {
     const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;

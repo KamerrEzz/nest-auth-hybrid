@@ -38,9 +38,6 @@ import { NotesModule } from './features/notes/notes.module';
     NotesModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-  ],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
-export class AppModule { }
+export class AppModule {}

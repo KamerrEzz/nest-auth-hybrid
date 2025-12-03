@@ -6,7 +6,7 @@ export default registerAs('session', () => {
   if (!secret || secret.length < 32) {
     throw new Error(
       'SESSION_SECRET must be set and at least 32 characters long. ' +
-      'Generate a secure secret with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"',
+        "Generate a secure secret with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     );
   }
 

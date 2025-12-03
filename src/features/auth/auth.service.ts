@@ -268,7 +268,11 @@ export class AuthService {
     const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
     const newHash = await bcrypt.hash(body.newPassword, rounds);
     await this.users.updatePassword(userId, newHash);
-    await this.audit.logPasswordChange(userId, meta?.ipAddress, meta?.userAgent);
+    await this.audit.logPasswordChange(
+      userId,
+      meta?.ipAddress,
+      meta?.userAgent,
+    );
     return { ok: true };
   }
 

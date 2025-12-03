@@ -43,4 +43,4 @@ import { AuditModule } from '../../modules/audit/audit.module';
   ],
   exports: [JwtAuthGuard, SessionAuthGuard, HybridAuthGuard],
 })
-export class AuthModule { }
+export class AuthModule {}

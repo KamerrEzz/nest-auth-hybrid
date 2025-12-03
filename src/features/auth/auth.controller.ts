@@ -38,7 +38,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly users: UserService,
     private readonly config: ConfigService,
-  ) { }
+  ) {}
 
   private parseDuration(value: string | number | undefined) {
     if (typeof value === 'number') return value;
@@ -254,10 +254,7 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(
-    @Body() dto: RefreshTokenDto,
-    @Req() req: ExpressRequest,
-  ) {
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: ExpressRequest) {
     return this.auth.refresh(dto.refreshToken, {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
