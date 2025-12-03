@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+npm run typecheck --if-present
+npm run format:check --if-present
+npx lint-staged
