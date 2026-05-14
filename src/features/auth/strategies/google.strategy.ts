@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import { UserService } from '../../../modules/user/user.service';
 
 @Injectable()
@@ -20,8 +21,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
+    _accessToken: string,
+    _refreshToken: string,
     profile: unknown,
   ): Promise<{ id: string }> {
     const p = profile as {
@@ -34,7 +35,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     if (!user) {
       user = await this.users.create({
         email,
-        password: accessToken.slice(0, 10),
+        password: randomBytes(32).toString('hex'),
         name: p.displayName,
       });
     }

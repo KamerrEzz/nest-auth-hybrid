@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-discord';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import { UserService } from '../../../modules/user/user.service';
 
 @Injectable()
@@ -21,8 +22,8 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
+    _accessToken: string,
+    _refreshToken: string,
     profile: unknown,
   ): Promise<{ id: string }> {
     const p = profile as { email?: string; username?: string };
@@ -32,7 +33,7 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
     if (!user) {
       user = await this.users.create({
         email,
-        password: accessToken.slice(0, 10),
+        password: randomBytes(32).toString('hex'),
         name: p.username,
       });
     }
