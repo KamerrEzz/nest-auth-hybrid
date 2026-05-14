@@ -18,6 +18,9 @@ import { CreateAppDto } from './dto/create-app.dto';
 
 const ALLOWED_SCOPES = ['openid', 'profile', 'email', 'notes'];
 
+// Must match the prefix used by SessionService (modules/session/session.service.ts).
+const SESSION_KEY_PREFIX = 'session:';
+
 @Injectable()
 export class OAuthService {
   private readonly logger = new Logger(OAuthService.name);
@@ -161,10 +164,15 @@ export class OAuthService {
   /**
    * Reads the session entry stored by SessionService (key `session:<id>`)
    * and returns the associated userId. Used by the /oauth/authorize redirect
-   * flow which cannot easily use HybridAuthGuard.
+   * flow, which cannot easily use HybridAuthGuard because Nest needs to
+   * respond with a 302 instead of throwing 401 when the user is not logged in.
+   *
+   * Validates expiry explicitly in addition to the Redis TTL, matching the
+   * behaviour of SessionService.get().
    */
   async getSessionUserId(sessionId: string): Promise<string | null> {
-    const raw = await this.redis.get(`session:${sessionId}`);
+    if (!sessionId || typeof sessionId !== 'string') return null;
+    const raw = await this.redis.get(`${SESSION_KEY_PREFIX}${sessionId}`);
     if (!raw) return null;
     try {
       const data = JSON.parse(raw) as {
@@ -173,7 +181,10 @@ export class OAuthService {
       };
       if (data.expiresAt && data.expiresAt < Date.now()) return null;
       return data.userId ?? null;
-    } catch {
+    } catch (err) {
+      this.logger.warn(
+        `Malformed session payload for ${sessionId}: ${(err as Error).message}`,
+      );
       return null;
     }
   }
