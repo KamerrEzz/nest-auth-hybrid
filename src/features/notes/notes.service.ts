@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { NoteService } from '../../modules/note/note.service';
 import { UserService } from '../../modules/user/user.service';
 import { TotpService } from '../../modules/totp/totp.service';
-import { Module } from '@nestjs/common';
 
 @Injectable()
 export class NotesService {
@@ -45,9 +44,3 @@ export class NotesService {
     return note;
   }
 }
-
-@Module({
-  providers: [NotesService],
-  exports: [NotesService],
-})
-export class NotesFeatureModule {}

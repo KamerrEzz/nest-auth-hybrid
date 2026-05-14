@@ -8,12 +8,9 @@ import securityConfig from './config/security.config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './modules/database/prisma/prisma.module';
 import { UserModule } from './modules/user/user.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AuthModule } from './features/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { CsrfGuard } from './common/guards/csrf.guard';
 import { PassportModule } from '@nestjs/passport';
 import { NoteModule } from './modules/note/note.module';
 import { NotesModule } from './features/notes/notes.module';
@@ -37,7 +34,6 @@ import { NotesModule } from './features/notes/notes.module';
     NoteModule,
     NotesModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
