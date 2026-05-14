@@ -14,7 +14,7 @@ import { OtpService } from '../../modules/otp/otp.service';
 import { EmailService } from '../../modules/email/email.service';
 import { TotpService } from '../../modules/totp/totp.service';
 import type { UserEntity } from '../../common/types/auth.types';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { AuditLogService } from '../../modules/audit/audit-log.service';
 
@@ -196,14 +196,25 @@ export class AuthService {
     return { requiresOtp: true, tempToken: rec.tempToken };
   }
 
-  async enable2fa(userId: string, label: string) {
-    const s = this.totp.generateSecret(label);
-    const enc = this.totp.encryptSecret(s.base32);
+  async enable2fa(
+    userId: string,
+    label: string,
+    currentTotpCode?: string,
+  ) {
     const user = await this.users.findById(userId);
     if (!user) throw new UnauthorizedException();
+    if (user.has2FA && user.totpSecret) {
+      const existingSecret = this.totp.decryptSecret(user.totpSecret);
+      const valid = currentTotpCode
+        ? this.totp.verify(currentTotpCode, existingSecret)
+        : false;
+      if (!valid) throw new UnauthorizedException('Current TOTP required to regenerate 2FA');
+    }
+    const s = this.totp.generateSecret(label);
+    const enc = this.totp.encryptSecret(s.base32);
     await this.users.enable2FA(userId, enc);
     const qr = await this.totp.generateQrDataUrl(s.otpauthUrl);
-    return { qrCode: qr, secret: s.base32 };
+    return { qrCode: qr };
   }
 
   async disable2fa(
@@ -241,7 +252,7 @@ export class AuthService {
     const ok = this.totp.verify(code, secret);
     if (!ok) throw new UnauthorizedException();
     const rawBackups = Array.from({ length: 10 }, () =>
-      Math.random().toString(36).slice(2, 10),
+      randomBytes(5).toString('hex'),
     );
     const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
     const hashed = await Promise.all(

@@ -185,9 +185,12 @@ export class AuthController {
 
   @Post('enable-2fa')
   @UseGuards(HybridAuthGuard)
-  async enable2fa(@CurrentUser() user?: { id: string }) {
+  async enable2fa(
+    @CurrentUser() user?: { id: string },
+    @Body() body?: { currentTotpCode?: string },
+  ) {
     if (!user) return { ok: false };
-    return this.auth.enable2fa(user.id, user.id);
+    return this.auth.enable2fa(user.id, user.id, body?.currentTotpCode);
   }
 
   @Post('verify-2fa')
