@@ -8,7 +8,10 @@ export class OtpService {
   constructor(@Inject(REDIS_CLIENT) private redis: Redis) {}
 
   async generate(email: string) {
-    const code = (100000 + (randomBytes(4).readUInt32BE(0) % 900000)).toString();
+    const code = (
+      100000 +
+      (randomBytes(4).readUInt32BE(0) % 900000)
+    ).toString();
     const tempToken = randomUUID();
     const ttlMs = 10 * 60 * 1000;
     const record = { tempToken, email, code, expiresAt: Date.now() + ttlMs };

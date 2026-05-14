@@ -13,14 +13,17 @@ export class TokenService {
   signAccess(payload: Record<string, any>) {
     return this.jwt.signAsync(payload, {
       secret: this.config.get<string>('jwt.secret')!,
-      expiresIn: parseDuration(this.config.get<string>('jwt.accessExpiration')) || 3600,
+      expiresIn:
+        parseDuration(this.config.get<string>('jwt.accessExpiration')) || 3600,
     });
   }
 
   signRefresh(payload: Record<string, any>) {
     return this.jwt.signAsync(payload, {
       secret: this.config.get<string>('jwt.refreshSecret')!,
-      expiresIn: parseDuration(this.config.get<string>('jwt.refreshExpiration')) || 604800,
+      expiresIn:
+        parseDuration(this.config.get<string>('jwt.refreshExpiration')) ||
+        604800,
     });
   }
 
@@ -37,5 +40,4 @@ export class TokenService {
       algorithms: ['HS256'],
     });
   }
-
 }
