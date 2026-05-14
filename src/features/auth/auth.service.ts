@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { UserService } from '../../modules/user/user.service';
 import { TokenService } from '../../modules/token/token.service';
@@ -41,6 +42,8 @@ export interface RequiresOtp {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private users: UserService,
     private tokens: TokenService,
@@ -99,7 +102,9 @@ export class AuthService {
       jti,
     });
     // Send verification email (non-blocking)
-    this.sendVerificationEmail(user.id).catch(() => undefined);
+    this.sendVerificationEmail(user.id).catch((err) =>
+      this.logger.warn('Verification email failed', err?.message),
+    );
     return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
