@@ -238,7 +238,8 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @UseGuards(HybridAuthGuard, CsrfGuard)
+  @RateLimit(5, 300)
+  @UseGuards(RateLimitGuard, HybridAuthGuard, CsrfGuard)
   async changePassword(
     @CurrentUser() user: { id: string },
     @Body() dto: ChangePasswordDto,
@@ -251,6 +252,8 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @RateLimit(10, 60)
+  @UseGuards(RateLimitGuard)
   async refresh(@Body() dto: RefreshTokenDto, @Req() req: ExpressRequest) {
     return this.auth.refresh(dto.refreshToken, {
       ipAddress: req.ip,
@@ -339,7 +342,8 @@ export class AuthController {
   }
 
   @Post('send-verification')
-  @UseGuards(HybridAuthGuard)
+  @RateLimit(3, 300)
+  @UseGuards(RateLimitGuard, HybridAuthGuard)
   async sendVerification(@CurrentUser() user: { id: string }) {
     await this.auth.sendVerificationEmail(user.id);
     return { ok: true };
@@ -347,6 +351,8 @@ export class AuthController {
 
   @Get('verify-email')
   @HttpCode(200)
+  @RateLimit(10, 60)
+  @UseGuards(RateLimitGuard)
   async verifyEmail(@Query('token') token: string) {
     if (!token) throw new UnauthorizedException('Token requerido');
     await this.auth.verifyEmail(token);
