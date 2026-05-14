@@ -75,4 +75,37 @@ y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
   `verifyAsync`, cerrando ataques de confusión de algoritmo (`alg: none`,
   RS256-sobre-HS256).
 
+### Sprint 2 — Limpieza y calidad
+
+#### Added
+
+- **Módulo Redis global `RedisModule`**: se crea `src/modules/redis/` con
+  un proveedor `REDIS_CLIENT` marcado como `@Global()`. Los cinco servicios
+  que antes abrían su propia conexión TCP (`AuthService`, `SessionService`,
+  `OtpService`, `NoteService`, `RateLimitGuard`) pasan a inyectar el cliente
+  compartido, reduciendo conexiones activas de 5 a 1.
+- **Modelo `AuditLog` en Prisma**: se añade la tabla con `userId`, `action`,
+  `severity`, `ipAddress`, `userAgent` y `metadata JSON`, con índices en
+  `userId`, `action` y `createdAt`. Se incluye la migración SQL en
+  `prisma/migrations/`. `AuditLogService` deja de hacer `console.log` y
+  persiste cada evento en la DB; fallos son silenciados para no interrumpir
+  la petición principal.
+
+#### Removed
+
+- **Boilerplate `AppController` / `AppService`**: se eliminan el endpoint
+  `GET /` ("Hello World"), su spec y el e2e spec asociado.
+- **`HealthController`**: nunca fue registrado en ningún módulo; creaba su
+  propia conexión Redis y no era alcanzable. Eliminado.
+- **`CookieHelper`**: helper nunca importado; la lógica existía duplicada
+  inline en el controller.
+- **`VerifyOtpDto`** y **`JwtPayload`**: DTOs e interfaces sin uso real.
+- **`NotesFeatureModule`**: clase de módulo incrustada al final de
+  `notes.service.ts`; el módulo real vive en `notes.module.ts`.
+
+#### Changed (deps)
+
+- Eliminadas 6 dependencias sin uso: `@keyv/redis`, `@nestjs/cache-manager`,
+  `cache-manager`, `dotenv`, `uuid`, `zod`.
+
 [Unreleased]: https://github.com/Kamerr/nest-auth-hybrid/compare/main...HEAD
