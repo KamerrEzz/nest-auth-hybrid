@@ -4,6 +4,50 @@ Todas las novedades relevantes de este proyecto se documentan aquí. El
 formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.2.0] - 2026-05-14
+
+### Sprint 6 — OAuth 2.0 Authorization Server
+
+#### Added
+
+- **VaultAuth como proveedor OAuth 2.0 / OIDC**: el backend expone ahora un
+  Authorization Server completo, compatible con el flujo `authorization_code`
+  (con PKCE opcional para clientes públicos) y `refresh_token`. Aplicaciones
+  de terceros pueden delegar la autenticación en VaultAuth igual que harían
+  con Google o Discord.
+- **Endpoints OAuth en `src/features/oauth/`**:
+  - `GET /oauth/authorize` — inicia el flujo, redirige a login o consent.
+  - `POST /oauth/authorize` — registra el consent del usuario y emite el
+    `authorization_code`.
+  - `POST /oauth/token` — intercambia código por `access_token` (+ opcional
+    `id_token` para scope `openid`) y refresca tokens.
+  - `GET /oauth/userinfo` — claims OIDC (`sub`, `email`, `name`, ...)
+    según los scopes concedidos.
+  - `POST /oauth/introspect` — RFC 7662, requiere `client_secret`.
+  - `POST /oauth/revoke` — RFC 7009, idempotente.
+  - `GET /.well-known/openid-configuration` y `GET /.well-known/jwks.json`
+    para discovery automático por parte de los clientes.
+- **Gestión de aplicaciones OAuth para el usuario**: `POST /oauth/apps`,
+  `GET /oauth/apps`, `DELETE /oauth/apps/:id`, `POST /oauth/apps/:id/regenerate-secret`.
+  El `client_secret` se entrega en plano una sola vez y se persiste como
+  hash bcrypt (cost 10). Las redirect URIs se validan estrictamente.
+- **Modelos Prisma `OAuthApp`, `OAuthAuthCode`, `OAuthToken`** con migración
+  SQL. Códigos de autorización con TTL de 10 minutos y flag `used` para
+  impedir reuso; tokens de acceso de 1 hora firmados con HS256 (mismo
+  `JWT_SECRET`), refresh tokens de 96 caracteres aleatorios criptográficos.
+- **PKCE (RFC 7636)** con métodos `S256` y `plain`. Cliente público
+  (sin `client_secret`) requiere `code_verifier` obligatorio.
+- **Rate limit** de 20 req/min en `/oauth/authorize` y `/oauth/token` para
+  contener fuerza bruta sobre el endpoint de token.
+- **Variable de entorno `SERVER_URL`** (defecto `http://localhost:3000`) usada
+  como `issuer` en discovery y en los claims `iss` de los `id_token`.
+
+#### Changed
+
+- `app.config.ts` añade `serverUrl` además del existente `frontendUrl`.
+
+---
+
 ## [0.1.0] - 2026-05-14
 
 ### Sprint 5 — Seguridad completa y observabilidad
@@ -168,4 +212,6 @@ y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
 - Eliminados comentarios inline en español en `auth.service.ts` y
   `otp.service.ts` que describían lo que el código ya expresaba.
 
-[Unreleased]: https://github.com/Kamerr/nest-auth-hybrid/compare/main...HEAD
+[Unreleased]: https://github.com/Kamerr/nest-auth-hybrid/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Kamerr/nest-auth-hybrid/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Kamerr/nest-auth-hybrid/releases/tag/v0.1.0
