@@ -4,6 +4,32 @@ Todas las novedades relevantes de este proyecto se documentan aquí. El
 formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.1.0] - 2026-05-14
+
+### Sprint 5 — Seguridad completa y observabilidad
+
+#### Added
+
+- **Flujo de recuperación de contraseña**: `POST /auth/forgot-password` y `POST /auth/reset-password` con tokens Redis (TTL 1 h). Nunca revela si el email existe; el token de reset expira y es de un solo uso.
+- **Verificación de email**: `POST /auth/send-verification` y `GET /auth/verify-email` con tokens Redis (TTL 24 h). El email de verificación se envía automáticamente tras el registro.
+- **Templates HTML de email**: layout oscuro con marca propia (`baseLayout`) reutilizado en OTP, reset de contraseña, verificación de email y aviso de pocos backup codes.
+- **Filtro global de excepciones**: normaliza todos los errores a `{ statusCode, error, message, timestamp }` y registra excepciones no-HTTP en el servidor.
+- **Módulo de health check**: `GET /health` (liveness rápido) y `GET /health/detailed` (ping a Prisma + Redis).
+- **Campo `emailVerified`** en el modelo User (migración Prisma incluida); expuesto en `UserResponseDto`.
+- **Registro de auditoría** para eventos de activación/desactivación de 2FA y consumo de backup codes.
+- **Aviso por email de pocos backup codes** cuando quedan ≤ 2 códigos.
+
+#### Changed
+
+- Protección CSRF extendida a todos los endpoints mutantes: `enable-2fa`, `verify-2fa`, `disable-2fa`, `2fa/cancel`, `logout`, `DELETE /sessions`, `DELETE /sessions/others`, `DELETE /sessions/:id`.
+- `frontendUrl` añadido a `app.config.ts` para generar los links de reset y verificación.
+
+#### Fixed
+
+- Las llamadas a `AuditLogService` y `EmailService` en `consumeBackupCode` eran TODOs sin implementar; ahora están completamente conectadas.
+
+---
+
 ## [Unreleased]
 
 ### Sprint 0 — Auditoría de seguridad
