@@ -29,6 +29,7 @@ services:
       - SESSION_SECRET=${SESSION_SECRET}
       - SESSION_MAX_AGE=${SESSION_MAX_AGE:-604800000}
       - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
     depends_on:
       - postgres
       - redis
