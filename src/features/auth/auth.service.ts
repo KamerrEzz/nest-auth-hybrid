@@ -261,7 +261,6 @@ export class AuthService {
     if (!authorized && byBackup) {
       authorized = await this.users.consumeBackupCode(userId, byBackup);
     }
-    // Permitir cancelar si aún no está confirmado (has2FA=false)
     if (!authorized) {
       if (!user.has2FA) {
         await this.users.cancel2FA(userId);
@@ -326,25 +325,20 @@ export class AuthService {
       jti?: string;
     };
 
-    // Validar que el token no haya sido revocado
     if (payload.jti) {
       const isRevoked = await this.redis.get(`revoked:${payload.jti}`);
-      if (isRevoked) {
-        throw new UnauthorizedException('Token has been revoked');
-      }
+      if (isRevoked) throw new UnauthorizedException('Token has been revoked');
     }
 
     const user = await this.users.findById(payload.sub);
     if (!user) throw new UnauthorizedException();
 
-    // Crear nueva sesión
     const session = await this.sessions.create(
       user.id,
       this.config.get<number>('session.maxAge')!,
       meta ?? {},
     );
 
-    // Generar NUEVOS tokens
     const newAccessToken = await this.tokens.signAccess({
       sub: user.id,
       sid: session.id,
@@ -356,9 +350,8 @@ export class AuthService {
       jti: newJti,
     });
 
-    // Revocar el refresh token anterior
     if (payload.jti) {
-      const ttl = 7 * 24 * 60 * 60; // 7 días
+      const ttl = 7 * 24 * 60 * 60;
       await this.redis.setex(`revoked:${payload.jti}`, ttl, '1');
     }
 

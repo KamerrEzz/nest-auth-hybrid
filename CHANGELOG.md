@@ -117,7 +117,6 @@ y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
   fallidos consecutivos. Cuenta separada de la limitación por IP ya existente,
   por lo que protege también desde IPs distintas. El contador se limpia en
   cada login exitoso.
-
 - **`parseDuration` centralizado**: el helper que convierte cadenas de
   duración (`15m`, `7d`, `3600`) a segundos existía duplicado como método
   privado en `AuthController` y `TokenService`. Se mueve a
@@ -135,5 +134,12 @@ y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
   de intentos OTP el servicio lanzaba un `Error` genérico, que NestJS
   convierte en HTTP 500. Ahora lanza `UnauthorizedException` para devolver
   correctamente HTTP 401.
+
+### Sprint 4 — Limpieza final
+
+#### Changed
+
+- Eliminados comentarios inline en español en `auth.service.ts` y
+  `otp.service.ts` que describían lo que el código ya expresaba.
 
 [Unreleased]: https://github.com/Kamerr/nest-auth-hybrid/compare/main...HEAD

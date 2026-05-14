@@ -43,16 +43,13 @@ export class OtpService {
       expiresAt: number;
     };
 
-    // Validar expiración explícitamente
     if (rec.expiresAt < Date.now()) {
       await this.redis.del(this.key(tempToken));
       return null;
     }
 
-    // Incrementar intentos
     const attempts = (rec.attempts || 0) + 1;
 
-    // Máximo 3 intentos
     if (attempts > 3) {
       await this.redis.del(this.key(tempToken));
       throw new UnauthorizedException('Too many failed attempts');
@@ -61,14 +58,12 @@ export class OtpService {
     const ok = rec.code === code;
 
     if (!ok) {
-      // Guardar intentos fallidos
       rec.attempts = attempts;
       const ttl = Math.max(1, Math.floor((rec.expiresAt - Date.now()) / 1000));
       await this.redis.setex(this.key(tempToken), ttl, JSON.stringify(rec));
       return null;
     }
 
-    // Código correcto, eliminar
     await this.redis.del(this.key(tempToken));
     return rec.email;
   }
