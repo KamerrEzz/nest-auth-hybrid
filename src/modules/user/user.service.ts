@@ -4,12 +4,16 @@ import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import type { UserEntity } from '../../common/types/auth.types';
+import { AuditLogService } from '../audit/audit-log.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private prisma: PrismaRepository,
     private config: ConfigService,
+    private audit: AuditLogService,
+    private email: EmailService,
   ) {}
 
   async create(data: CreateUserDto): Promise<UserEntity> {
@@ -57,19 +61,11 @@ export class UserService {
     const next = user.backupCodes.filter((_, i) => i !== matchedIndex);
     await this.prisma.updateBackupCodes(user.id, next);
 
-    // TODO: Implementar audit log cuando se cree el servicio
-    // await this.audit.log({
-    //   userId: user.id,
-    //   action: 'BACKUP_CODE_USED',
-    //   metadata: { remainingCodes: next.length },
-    //   timestamp: new Date(),
-    // });
+    await this.audit.logBackupCodeUsed(user.id, next.length);
 
-    // Notificar al usuario si quedan pocos códigos
-    // TODO: Descomentar cuando el servicio de email esté configurado
-    // if (next.length <= 2) {
-    //   await this.email.sendLowBackupCodesWarning(user.email, next.length);
-    // }
+    if (next.length <= 2) {
+      await this.email.sendLowBackupCodesWarning(user.email, next.length);
+    }
 
     return true;
   }
@@ -84,5 +80,9 @@ export class UserService {
 
   async updatePassword(userId: string, passwordHash: string) {
     await this.prisma.updateUserPassword(userId, passwordHash);
+  }
+
+  async verifyEmail(userId: string) {
+    await this.prisma.verifyUserEmail(userId);
   }
 }
