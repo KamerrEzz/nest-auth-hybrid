@@ -16,6 +16,7 @@ import { PassportModule } from '@nestjs/passport';
 import { NoteModule } from './modules/note/note.module';
 import { NotesModule } from './features/notes/notes.module';
 import { HealthModule } from './modules/health/health.module';
+import { OAuthModule } from './features/oauth/oauth.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { HealthModule } from './modules/health/health.module';
     NoteModule,
     NotesModule,
     HealthModule,
+    OAuthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

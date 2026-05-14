@@ -96,4 +96,85 @@ export class PrismaRepository extends PrismaService {
       },
     });
   }
+
+  // ── OAuth App ──────────────────────────────────────────────────────
+  async createOAuthApp(data: {
+    name: string;
+    description?: string;
+    redirectUris: string[];
+    scopes: string[];
+    userId: string;
+    clientSecret: string;
+  }) {
+    return this.oAuthApp.create({ data });
+  }
+
+  async findOAuthAppsByUser(userId: string) {
+    return this.oAuthApp.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOAuthAppById(id: string) {
+    return this.oAuthApp.findUnique({ where: { id } });
+  }
+
+  async findOAuthAppByClientId(clientId: string) {
+    return this.oAuthApp.findUnique({ where: { clientId } });
+  }
+
+  async deleteOAuthApp(id: string) {
+    return this.oAuthApp.delete({ where: { id } });
+  }
+
+  async updateOAuthAppSecret(id: string, clientSecret: string) {
+    return this.oAuthApp.update({ where: { id }, data: { clientSecret } });
+  }
+
+  // ── OAuth Auth Code ────────────────────────────────────────────────
+  async createOAuthAuthCode(data: {
+    code: string;
+    clientId: string;
+    userId: string;
+    scopes: string[];
+    redirectUri: string;
+    expiresAt: Date;
+    codeChallenge?: string;
+    codeChallengeMethod?: string;
+  }) {
+    return this.oAuthAuthCode.create({ data });
+  }
+
+  async findOAuthAuthCode(code: string) {
+    return this.oAuthAuthCode.findUnique({ where: { code } });
+  }
+
+  async markOAuthAuthCodeUsed(id: string) {
+    return this.oAuthAuthCode.update({ where: { id }, data: { used: true } });
+  }
+
+  // ── OAuth Token ────────────────────────────────────────────────────
+  async createOAuthToken(data: {
+    accessToken: string;
+    refreshToken: string;
+    clientId: string;
+    userId: string;
+    scopes: string[];
+    expiresAt: Date;
+  }) {
+    return this.oAuthToken.create({ data });
+  }
+
+  async findOAuthTokenByAccess(accessToken: string) {
+    return this.oAuthToken.findUnique({ where: { accessToken } });
+  }
+
+  async findOAuthTokenByRefresh(refreshToken: string) {
+    return this.oAuthToken.findUnique({ where: { refreshToken } });
+  }
+
+  async revokeOAuthToken(id: string) {
+    return this.oAuthToken.update({ where: { id }, data: { revoked: true } });
+  }
 }
