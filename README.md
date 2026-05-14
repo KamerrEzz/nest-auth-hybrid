@@ -1,7 +1,7 @@
 <h1 align="center">nest-auth-hybrid</h1>
 
 <p align="center">
-  Production-ready authentication API built with NestJS — JWT sessions, 2FA, OAuth and full audit trail.
+  API de autenticación lista para producción construida con NestJS — sesiones JWT, 2FA, OAuth y auditoría completa.
 </p>
 
 <p align="center">
@@ -14,80 +14,85 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/OWASP_Top_10-audited-4CAF50?style=flat-square" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" />
+  <img src="https://img.shields.io/badge/OWASP_Top_10-auditado-4CAF50?style=flat-square" />
+  <img src="https://img.shields.io/badge/Licencia-MIT-yellow?style=flat-square" />
+</p>
+
+<p align="center">
+  <a href="./README.en.md">🇬🇧 English version</a>
 </p>
 
 ---
 
-## Overview
+## Descripción general
 
-`nest-auth-hybrid` is a fully-featured authentication backend that covers every critical flow a modern application needs — from standard email/password login to hardware-based two-factor authentication and social SSO — with a production-grade security posture validated against the OWASP Top 10.
+`nest-auth-hybrid` es un backend de autenticación completo que cubre cada flujo crítico que una aplicación moderna necesita — desde el login clásico con email y contraseña hasta autenticación de dos factores y SSO social — con una postura de seguridad de nivel producción validada contra el OWASP Top 10.
 
-It pairs with [`next-auth-hybrid`](https://github.com/KamerrEzz/next-auth-hybrid) as a full-stack authentication system.
-
----
-
-## Features
-
-### Authentication flows
-- **Local auth** — email + password with bcrypt (configurable rounds)
-- **JWT** — short-lived access tokens (HS256, explicit algorithm pinning) + refresh token rotation with denylist
-- **Session** — Redis-backed sessions with sliding expiry, multi-device support and individual/bulk revocation
-- **Hybrid guard** — transparently accepts either JWT header or session cookie on every protected endpoint
-
-### Two-Factor Authentication
-- **TOTP** — Google Authenticator compatible (speakeasy + QR via qrcode); secret encrypted at rest with AES-256-GCM
-- **Email OTP** — time-limited one-time codes sent via Resend
-- **Backup codes** — 10 single-use codes generated with CSPRNG, stored as bcrypt hashes
-- **Graceful enable/disable** — requires current TOTP to rotate the shared secret; cancel flow for pending setup
-
-### Social login
-- **Google OAuth 2.0** and **Discord OAuth 2.0** via Passport
-- Accounts created with a cryptographically random placeholder password so local login is not possible on SSO-only accounts
-
-### Security
-- CORS allowlist with `credentials: true`
-- Helmet (HTTP security headers)
-- CSRF cookie/header double-submit pattern
-- IP-based rate limiting per endpoint via Redis
-- `trust proxy` set for correct client IP behind load balancers
-- `SameSite: lax` on OAuth callback cookies; `strict` on all other auth cookies
-- Full **AuditLog** persisted to Postgres for every security event (login attempts, password changes, 2FA enable/disable, session revocations)
-
-### Infrastructure
-- Single shared Redis connection via `@Global() RedisModule` — no per-service connections
-- Docker Compose with no hardcoded credentials, data ports not exposed to host, Redis password-protected
-- Prisma migrations included
+Se combina con [`next-auth-hybrid`](https://github.com/KamerrEzz/next-auth-hybrid) como sistema de autenticación full-stack.
 
 ---
 
-## Stack
+## Funcionalidades
 
-| Layer | Technology |
+### Flujos de autenticación
+- **Auth local** — email + contraseña con bcrypt (rondas configurables)
+- **JWT** — tokens de acceso de corta duración (HS256, algoritmo fijado explícitamente) + rotación de refresh tokens con denylist
+- **Sesiones** — sesiones respaldadas por Redis con expiración deslizante, soporte multi-dispositivo y revocación individual o masiva
+- **Guard híbrido** — acepta transparentemente JWT en cabecera o cookie de sesión en cada endpoint protegido
+
+### Autenticación de dos factores (2FA)
+- **TOTP** — compatible con Google Authenticator (speakeasy + QR via qrcode); secreto cifrado en reposo con AES-256-GCM
+- **OTP por email** — códigos de un solo uso con tiempo límite enviados vía Resend
+- **Códigos de respaldo** — 10 códigos de un solo uso generados con CSPRNG, almacenados como hashes bcrypt
+- **Activación/desactivación segura** — requiere el TOTP actual para rotar el secreto; flujo de cancelación para configuraciones pendientes
+
+### Login social
+- **Google OAuth 2.0** y **Discord OAuth 2.0** vía Passport
+- Las cuentas creadas por SSO reciben una contraseña aleatoria criptográficamente segura para impedir el login local
+
+### Seguridad
+- Lista de orígenes permitidos en CORS con `credentials: true`
+- Helmet (cabeceras de seguridad HTTP)
+- Patrón de doble envío CSRF (cookie + cabecera)
+- Limitación de tasa por IP y por endpoint vía Redis
+- `trust proxy` configurado para obtener la IP real del cliente detrás de load balancers
+- `SameSite: lax` en cookies de callbacks OAuth; `strict` en el resto
+- **AuditLog** completo persistido en Postgres para cada evento de seguridad (intentos de login, cambios de contraseña, activación/desactivación de 2FA, revocación de sesiones)
+- **Bloqueo de cuenta por email** — tras 5 intentos fallidos consecutivos, la cuenta queda bloqueada 15 minutos en Redis
+
+### Infraestructura
+- Conexión Redis compartida mediante `@Global() RedisModule` — sin conexiones por servicio
+- Docker Compose sin credenciales hardcodeadas, puertos de datos no expuestos al host, Redis con contraseña
+- Migraciones Prisma incluidas
+
+---
+
+## Stack tecnológico
+
+| Capa | Tecnología |
 |---|---|
 | Framework | NestJS 11 |
-| Language | TypeScript 5 |
+| Lenguaje | TypeScript 5 |
 | ORM | Prisma 6 + PostgreSQL 16 |
-| Cache / Sessions | ioredis + Redis 7 |
+| Caché / Sesiones | ioredis + Redis 7 |
 | Auth | Passport.js, @nestjs/jwt, bcrypt |
 | 2FA | speakeasy (TOTP), qrcode |
 | Email | Resend |
-| Validation | class-validator + class-transformer |
-| Security | helmet, CSRF guard, custom rate-limit guard |
-| Containerisation | Docker + Docker Compose |
+| Validación | class-validator + class-transformer |
+| Seguridad | helmet, CSRF guard, rate-limit guard personalizado |
+| Contenedores | Docker + Docker Compose |
 
 ---
 
-## Architecture
+## Arquitectura
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    HTTP Request                      │
+│                   Petición HTTP                      │
 └───────────────────────┬─────────────────────────────┘
                         │
               ┌─────────▼──────────┐
-              │   HybridAuthGuard  │  JWT header OR session cookie
+              │   HybridAuthGuard  │  JWT en cabecera O cookie de sesión
               └─────────┬──────────┘
                         │
          ┌──────────────▼──────────────┐
@@ -99,30 +104,30 @@ It pairs with [`next-auth-hybrid`](https://github.com/KamerrEzz/next-auth-hybrid
                 │              │
      ┌──────────▼──┐    ┌──────▼──────────┐
      │ AuthService │    │  TokenService   │
-     │  (business) │    │  (HS256 JWT)    │
+     │  (negocio)  │    │  (HS256 JWT)    │
      └──────┬──────┘    └─────────────────┘
             │
      ┌──────▼──────────────────────────────┐
-     │           Redis (shared)            │
-     │  sessions · OTP tickets · revoked   │
-     │  refresh tokens · rate-limit keys   │
+     │           Redis (compartido)        │
+     │  sesiones · tickets OTP · revocados │
+     │  refresh tokens · claves rate-limit │
      └─────────────────────────────────────┘
             │
      ┌──────▼──────┐    ┌────────────────┐
      │  PostgreSQL  │    │  AuditLog DB   │
-     │  User model  │    │  every event   │
+     │  Modelo User │    │  cada evento   │
      └─────────────┘    └────────────────┘
 ```
 
 ---
 
-## Quick Start
+## Inicio rápido
 
-### Prerequisites
+### Requisitos previos
 - Node.js >= 20
 - Docker + Docker Compose
 
-### 1. Clone and install
+### 1. Clonar e instalar
 
 ```bash
 git clone https://github.com/KamerrEzz/nest-auth-hybrid.git
@@ -130,16 +135,16 @@ cd nest-auth-hybrid
 npm install
 ```
 
-### 2. Configure environment
+### 2. Configurar el entorno
 
 ```bash
 cp .env.example .env
 ```
 
-Required variables:
+Variables requeridas:
 
 ```env
-# Database
+# Base de datos
 DATABASE_URL=postgresql://user:pass@localhost:5432/authdb
 POSTGRES_USER=user
 POSTGRES_PASSWORD=pass
@@ -150,11 +155,11 @@ REDIS_URL=redis://:password@localhost:6379
 REDIS_PASSWORD=password
 
 # JWT
-JWT_SECRET=your-256-bit-secret
-JWT_REFRESH_SECRET=your-256-bit-refresh-secret
+JWT_SECRET=tu-secreto-de-256-bits
+JWT_REFRESH_SECRET=tu-secreto-refresh-de-256-bits
 
-# TOTP encryption (64 hex chars = 32 bytes)
-TOTP_ENC_KEY=your-64-hex-chars
+# Cifrado TOTP (64 caracteres hex = 32 bytes)
+TOTP_ENC_KEY=tus-64-caracteres-hex
 
 # OAuth
 GOOGLE_CLIENT_ID=
@@ -174,73 +179,74 @@ NODE_ENV=development
 PORT=3000
 ```
 
-### 3. Run with Docker
+### 3. Ejecutar con Docker
 
 ```bash
 docker compose up --build
 ```
 
-### 4. Run locally (dev)
+### 4. Ejecutar en local (desarrollo)
 
 ```bash
-# Start postgres + redis
+# Iniciar postgres + redis
 docker compose up postgres redis -d
 
-# Apply migrations
+# Aplicar migraciones
 npx prisma migrate deploy
 
-# Start API
+# Iniciar la API
 npm run start:dev
 ```
 
 ---
 
-## API Endpoints
+## Endpoints de la API
 
-| Method | Path | Description |
+| Método | Ruta | Descripción |
 |--------|------|-------------|
-| `POST` | `/auth/register` | Create account |
-| `POST` | `/auth/login` | Email + password login |
-| `POST` | `/auth/verify-otp` | Complete 2FA challenge |
-| `POST` | `/auth/refresh` | Rotate refresh token |
-| `GET` | `/auth/me` | Current user profile |
-| `POST` | `/auth/logout` | Invalidate session |
-| `GET` | `/auth/csrf` | Obtain CSRF token |
-| `POST` | `/auth/change-password` | Change password (requires CSRF + TOTP if 2FA active) |
-| `POST` | `/auth/enable-2fa` | Begin TOTP setup |
-| `POST` | `/auth/verify-2fa` | Confirm TOTP + generate backup codes |
-| `POST` | `/auth/disable-2fa` | Remove 2FA (requires TOTP or backup code) |
-| `GET` | `/auth/sessions` | List active sessions |
-| `DELETE` | `/auth/sessions/others` | Revoke all other sessions |
-| `DELETE` | `/auth/sessions/:id` | Revoke specific session |
-| `GET` | `/auth/google` | Initiate Google OAuth |
-| `GET` | `/auth/discord` | Initiate Discord OAuth |
-| `GET` | `/notes` | List notes (`X-TOTP-Code` header required for secure notes) |
-| `POST` | `/notes` | Create note |
-| `GET` | `/notes/:id` | Get note |
+| `POST` | `/auth/register` | Crear cuenta |
+| `POST` | `/auth/login` | Login con email + contraseña |
+| `POST` | `/auth/verify-otp` | Completar desafío 2FA |
+| `POST` | `/auth/refresh` | Rotar refresh token |
+| `GET` | `/auth/me` | Perfil del usuario actual |
+| `POST` | `/auth/logout` | Invalidar sesión |
+| `GET` | `/auth/csrf` | Obtener token CSRF |
+| `POST` | `/auth/change-password` | Cambiar contraseña (requiere CSRF + TOTP si 2FA activo) |
+| `POST` | `/auth/enable-2fa` | Iniciar configuración TOTP |
+| `POST` | `/auth/verify-2fa` | Confirmar TOTP + generar códigos de respaldo |
+| `POST` | `/auth/disable-2fa` | Eliminar 2FA (requiere TOTP o código de respaldo) |
+| `GET` | `/auth/sessions` | Listar sesiones activas |
+| `DELETE` | `/auth/sessions/others` | Revocar todas las otras sesiones |
+| `DELETE` | `/auth/sessions/:id` | Revocar sesión específica |
+| `GET` | `/auth/google` | Iniciar OAuth con Google |
+| `GET` | `/auth/discord` | Iniciar OAuth con Discord |
+| `GET` | `/notes` | Listar notas (cabecera `X-TOTP-Code` requerida para notas seguras) |
+| `POST` | `/notes` | Crear nota |
+| `GET` | `/notes/:id` | Obtener nota |
 
-Full documentation: [`auth_endpoints.md`](./auth_endpoints.md)
+Documentación completa: [`auth_endpoints.md`](./auth_endpoints.md)
 
 ---
 
-## Security Posture
+## Postura de seguridad
 
-This project has been audited against the **OWASP Top 10 (2021)** across three sprints. Key decisions:
+Este proyecto ha sido auditado contra el **OWASP Top 10 (2021)** a lo largo de cuatro sprints. Decisiones clave:
 
-| Area | Decision |
+| Área | Decisión |
 |---|---|
-| Algorithm confusion | `algorithms: ['HS256']` pinned on every JWT verify |
-| Token storage | httpOnly + Secure + SameSite cookies; no localStorage |
-| Secret storage | TOTP secrets encrypted AES-256-GCM before DB write |
-| Backup codes | CSPRNG (`randomBytes`), bcrypt-hashed in DB |
-| Session revocation | Redis denylist for refresh tokens; individual session revoke with ownership check |
-| CSRF | Double-submit cookie/header pattern on mutating endpoints |
-| Rate limiting | Per-IP + per-path via Redis; global Throttler on all routes |
-| Audit trail | Every auth event persisted to `AuditLog` Postgres table |
-| Infrastructure | No credentials in compose; data ports internal-only; Redis `requirepass` |
+| Confusión de algoritmo | `algorithms: ['HS256']` fijado en cada verificación JWT |
+| Almacenamiento de tokens | Cookies httpOnly + Secure + SameSite; sin localStorage |
+| Almacenamiento de secretos | Secretos TOTP cifrados con AES-256-GCM antes de escribir en DB |
+| Códigos de respaldo | CSPRNG (`randomBytes`), almacenados con hash bcrypt en DB |
+| Revocación de sesiones | Denylist Redis para refresh tokens; revocación individual con verificación de propiedad |
+| CSRF | Patrón de doble envío cookie/cabecera en endpoints mutables |
+| Limitación de tasa | Por-IP + por-ruta via Redis; Throttler global en todas las rutas |
+| Bloqueo de cuenta | 5 intentos fallidos → bloqueo de 15 min en Redis (por email, independiente del rate limit por IP) |
+| Rastro de auditoría | Cada evento de autenticación persistido en tabla `AuditLog` de Postgres |
+| Infraestructura | Sin credenciales en compose; puertos de datos internos; Redis con `requirepass` |
 
 ---
 
-## License
+## Licencia
 
 MIT © [Kamerr Ezz](https://github.com/KamerrEzz)
