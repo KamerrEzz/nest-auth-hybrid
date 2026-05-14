@@ -20,6 +20,9 @@ model User {
   lastLoginAt  DateTime?
   emailVerified    Boolean   @default(false)
   sessions     Session[]
+  oauthApps   OAuthApp[]
+  oauthCodes  OAuthAuthCode[]
+  oauthTokens OAuthToken[]
 
   @@index([email])
 }
@@ -50,4 +53,57 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model OAuthApp {
+  id            String          @id @default(cuid())
+  clientId      String          @unique @default(cuid())
+  clientSecret  String
+  name          String
+  description   String?
+  redirectUris  String[]
+  scopes        String[]
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authCodes     OAuthAuthCode[]
+  tokens        OAuthToken[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model OAuthAuthCode {
+  id                  String    @id @default(cuid())
+  code                String    @unique
+  clientId            String
+  userId              String
+  scopes              String[]
+  redirectUri         String
+  expiresAt           DateTime
+  codeChallenge       String?
+  codeChallengeMethod String?
+  used                Boolean   @default(false)
+  app                 OAuthApp  @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime  @default(now())
+
+  @@index([clientId])
+}
+
+model OAuthToken {
+  id            String    @id @default(cuid())
+  accessToken   String    @unique
+  refreshToken  String?   @unique
+  clientId      String
+  userId        String
+  scopes        String[]
+  expiresAt     DateTime
+  revoked       Boolean   @default(false)
+  app           OAuthApp  @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@index([clientId])
+  @@index([userId])
 }
