@@ -30,12 +30,14 @@ export class TokenService {
   verifyAccess(token: string) {
     return this.jwt.verifyAsync(token, {
       secret: this.config.get<string>('jwt.secret')!,
+      algorithms: ['HS256'],
     });
   }
 
   verifyRefresh(token: string) {
     return this.jwt.verifyAsync(token, {
       secret: this.config.get<string>('jwt.refreshSecret')!,
+      algorithms: ['HS256'],
     });
   }
 

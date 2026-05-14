@@ -3,7 +3,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [
+    JwtModule.register({
+      signOptions: { algorithm: 'HS256' },
+    }),
+  ],
   providers: [TokenService],
   exports: [TokenService],
 })
