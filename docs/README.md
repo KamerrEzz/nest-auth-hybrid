@@ -17,7 +17,8 @@ VaultAuth es un servidor de autorización OAuth 2.0 construido con NestJS que im
 
 | Documento                                              | Descripción                                                                      |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| [architecture/technical.md](architecture/technical.md) | Diseño técnico, decisiones de arquitectura, modelo de datos, flujos de seguridad |
+| [architecture/system.md](architecture/system.md)       | Visión del sistema: componentes, modelo de datos, flujos de red, infraestructura |
+| [architecture/technical.md](architecture/technical.md) | Decisiones de diseño internas, estrategia de tokens, concurrencia, seguridad     |
 
 ### Guías
 
