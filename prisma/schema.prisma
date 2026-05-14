@@ -18,6 +18,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   lastLoginAt  DateTime?
+  emailVerified    Boolean   @default(false)
   sessions     Session[]
 
   @@index([email])
