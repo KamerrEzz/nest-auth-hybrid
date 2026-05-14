@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import type { User } from '@prisma/client';
 
 @Injectable()
@@ -82,6 +82,11 @@ export class PrismaRepository extends PrismaService {
     metadata?: Record<string, unknown>;
     severity: string;
   }) {
-    return this.auditLog.create({ data });
+    return this.auditLog.create({
+      data: {
+        ...data,
+        metadata: data.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
   }
 }
