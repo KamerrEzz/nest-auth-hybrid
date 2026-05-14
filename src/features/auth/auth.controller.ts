@@ -345,14 +345,14 @@ export class AuthController {
     res.cookie('sessionId', result.sessionId, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
     const csrfToken = randomUUID();
     res.cookie('csrfToken', csrfToken, {
       httpOnly: false,
       secure: isProd,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
     const expiresIn = this.parseDuration(
@@ -393,14 +393,14 @@ export class AuthController {
     res.cookie('sessionId', result.sessionId, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
     const csrfToken = randomUUID();
     res.cookie('csrfToken', csrfToken, {
       httpOnly: false,
       secure: isProd,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
     const expiresIn = this.parseDuration(
