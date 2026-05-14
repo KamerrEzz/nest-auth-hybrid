@@ -66,6 +66,13 @@ export class PrismaRepository extends PrismaService {
     return result;
   }
 
+  async verifyUserEmail(userId: string) {
+    return this.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+  }
+
   async cancel2FA(userId: string) {
     const result = await this.user.update({
       where: { id: userId },

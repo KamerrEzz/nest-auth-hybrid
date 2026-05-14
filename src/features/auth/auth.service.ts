@@ -53,7 +53,6 @@ export class AuthService {
     @Inject(REDIS_CLIENT) private redis: Redis,
   ) {}
 
-
   private readonly LOCKOUT_THRESHOLD = 5;
   private readonly LOCKOUT_TTL_S = 15 * 60;
 
@@ -99,6 +98,8 @@ export class AuthService {
       sub: user.id,
       jti,
     });
+    // Send verification email (non-blocking)
+    this.sendVerificationEmail(user.id).catch(() => undefined);
     return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
@@ -108,7 +109,9 @@ export class AuthService {
     meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<LoginSuccess | RequiresOtp> {
     if (await this.isLocked(email)) {
-      throw new UnauthorizedException('Account temporarily locked. Try again later.');
+      throw new UnauthorizedException(
+        'Account temporarily locked. Try again later.',
+      );
     }
     const user = await this.users.findByEmail(email);
     if (!user) {
@@ -224,11 +227,7 @@ export class AuthService {
     return { requiresOtp: true, tempToken: rec.tempToken };
   }
 
-  async enable2fa(
-    userId: string,
-    label: string,
-    currentTotpCode?: string,
-  ) {
+  async enable2fa(userId: string, label: string, currentTotpCode?: string) {
     const user = await this.users.findById(userId);
     if (!user) throw new UnauthorizedException();
     if (user.has2FA && user.totpSecret) {
@@ -236,7 +235,10 @@ export class AuthService {
       const valid = currentTotpCode
         ? this.totp.verify(currentTotpCode, existingSecret)
         : false;
-      if (!valid) throw new UnauthorizedException('Current TOTP required to regenerate 2FA');
+      if (!valid)
+        throw new UnauthorizedException(
+          'Current TOTP required to regenerate 2FA',
+        );
     }
     const s = this.totp.generateSecret(label);
     const enc = this.totp.encryptSecret(s.base32);
@@ -269,6 +271,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     await this.users.disable2FA(userId);
+    await this.audit.log2FADisabled(userId);
     return { ok: true };
   }
 
@@ -286,6 +289,7 @@ export class AuthService {
       rawBackups.map((x) => bcrypt.hash(x, rounds)),
     );
     await this.users.confirm2FA(userId, hashed);
+    await this.audit.log2FAEnabled(userId);
     return { ok: true, backupCodes: rawBackups };
   }
 
@@ -378,5 +382,60 @@ export class AuthService {
 
   async revokeOtherSessions(userId: string, keepId: string) {
     await this.sessions.revokeAllByUserExcept(userId, keepId);
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email);
+    // Always return ok — never reveal if email exists (prevent enumeration)
+    if (!user) return;
+    const token = randomBytes(32).toString('hex');
+    // TTL: 1 hour
+    await this.redis.setex(`reset:${token}`, 3600, user.id);
+    const frontendUrl =
+      this.config.get<string>('app.frontendUrl') ?? 'http://localhost:3001';
+    const resetUrl = `${frontendUrl}/reset-password/${token}`;
+    await this.email.sendPasswordReset(user.email, resetUrl);
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    meta?: { ipAddress?: string; userAgent?: string },
+  ): Promise<void> {
+    const userId = await this.redis.get(`reset:${token}`);
+    if (!userId) throw new UnauthorizedException('Token inválido o expirado');
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    const rounds = this.config.get<number>('security.bcryptRounds') ?? 12;
+    const hash = await bcrypt.hash(newPassword, rounds);
+    await this.users.updatePassword(userId, hash);
+    // Invalidate the token immediately after use
+    await this.redis.del(`reset:${token}`);
+    // Revoke all sessions for security
+    await this.sessions.revokeAllByUser(userId);
+    await this.audit.logPasswordChange(
+      userId,
+      meta?.ipAddress,
+      meta?.userAgent,
+    );
+  }
+
+  async sendVerificationEmail(userId: string): Promise<void> {
+    const user = await this.users.findById(userId);
+    if (!user || user.emailVerified) return;
+    const token = randomBytes(32).toString('hex');
+    // TTL: 24 hours
+    await this.redis.setex(`verify:${token}`, 86400, userId);
+    const frontendUrl =
+      this.config.get<string>('app.frontendUrl') ?? 'http://localhost:3001';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+    await this.email.sendEmailVerification(user.email, verificationUrl);
+  }
+
+  async verifyEmail(token: string): Promise<void> {
+    const userId = await this.redis.get(`verify:${token}`);
+    if (!userId) throw new UnauthorizedException('Token inválido o expirado');
+    await this.users.verifyEmail(userId);
+    await this.redis.del(`verify:${token}`);
   }
 }

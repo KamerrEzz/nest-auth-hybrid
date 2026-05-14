@@ -7,6 +7,8 @@ import {
   Res,
   UseGuards,
   Req,
+  Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Delete, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -15,6 +17,8 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 // import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
@@ -46,12 +50,14 @@ export class AuthController {
     email: string;
     name?: string | null;
     createdAt?: Date;
+    emailVerified?: boolean;
   }) {
     return new UserResponseDto({
       id: entity.id,
       email: entity.email,
       name: entity.name ?? undefined,
       createdAt: entity.createdAt ?? new Date(),
+      emailVerified: entity.emailVerified ?? false,
     });
   }
 
@@ -172,7 +178,7 @@ export class AuthController {
   }
 
   @Post('enable-2fa')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async enable2fa(
     @CurrentUser() user?: { id: string },
     @Body() body?: { currentTotpCode?: string },
@@ -182,7 +188,7 @@ export class AuthController {
   }
 
   @Post('verify-2fa')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async verify2fa(
     @CurrentUser() user: { id: string },
     @Body() body: { code: string },
@@ -203,7 +209,7 @@ export class AuthController {
   }
 
   @Post('disable-2fa')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async disable2fa(
     @CurrentUser() user: { id: string },
     @Body() body: { totpCode?: string; backupCode?: string },
@@ -212,7 +218,7 @@ export class AuthController {
   }
 
   @Post('2fa/cancel')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async cancel2fa(@CurrentUser() user: { id: string }) {
     // Cancelar solo si no está confirmado aún
     return this.auth.disable2fa(user.id, {});
@@ -263,7 +269,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('sessionId');
     return { ok: true };
@@ -282,7 +288,7 @@ export class AuthController {
   }
 
   @Delete('sessions')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async revokeAll(@CurrentUser() user?: { id: string }) {
     if (!user) return { ok: false };
     await this.auth.revokeAllSessions(user.id);
@@ -290,7 +296,7 @@ export class AuthController {
   }
 
   @Delete('sessions/others')
-  @UseGuards(HybridAuthGuard)
+  @UseGuards(HybridAuthGuard, CsrfGuard)
   async revokeOthers(
     @CurrentUser() user: { id: string },
     @Req() req: ExpressRequest,
@@ -302,14 +308,51 @@ export class AuthController {
   }
 
   @Delete('sessions/:id')
-  @UseGuards(HybridAuthGuard)
-  async revoke(
-    @CurrentUser() user: { id: string },
-    @Param('id') id: string,
-  ) {
+  @UseGuards(HybridAuthGuard, CsrfGuard)
+  async revoke(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     await this.auth.revokeSession(id, user.id);
     return { ok: true };
   }
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  @RateLimit(3, 300)
+  @UseGuards(RateLimitGuard)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.auth.forgotPassword(dto.email);
+    return { ok: true };
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  @RateLimit(3, 300)
+  @UseGuards(RateLimitGuard)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Req() req: ExpressRequest,
+  ) {
+    await this.auth.resetPassword(dto.token, dto.newPassword, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    return { ok: true };
+  }
+
+  @Post('send-verification')
+  @UseGuards(HybridAuthGuard)
+  async sendVerification(@CurrentUser() user: { id: string }) {
+    await this.auth.sendVerificationEmail(user.id);
+    return { ok: true };
+  }
+
+  @Get('verify-email')
+  @HttpCode(200)
+  async verifyEmail(@Query('token') token: string) {
+    if (!token) throw new UnauthorizedException('Token requerido');
+    await this.auth.verifyEmail(token);
+    return { ok: true };
+  }
+
   @Get('google')
   @UseGuards(AuthGuard('google'))
   google() {

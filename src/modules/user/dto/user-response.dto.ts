@@ -13,6 +13,9 @@ export class UserResponseDto {
   @Expose()
   createdAt!: Date;
 
+  @Expose()
+  emailVerified!: boolean;
+
   @Exclude()
   password!: string;
 

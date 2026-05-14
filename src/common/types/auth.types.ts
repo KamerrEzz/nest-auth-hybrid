@@ -6,4 +6,5 @@ export interface UserEntity {
   has2FA: boolean;
   totpSecret?: string | null;
   backupCodes?: string[];
+  emailVerified: boolean;
 }
