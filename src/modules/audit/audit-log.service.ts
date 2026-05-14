@@ -6,7 +6,7 @@ export interface AuditLogEvent {
   action: string;
   ipAddress?: string;
   userAgent?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   severity: 'info' | 'warning' | 'critical';
 }
 
@@ -14,39 +14,21 @@ export interface AuditLogEvent {
 export class AuditLogService {
   constructor(private prisma: PrismaRepository) {}
 
-  /**
-   * Registra un evento de auditoría
-   * @param event - Evento a registrar
-   */
   async log(event: AuditLogEvent): Promise<void> {
     try {
-      // TODO: Implementar cuando el modelo AuditLog esté en Prisma
-      // await this.prisma.auditLog.create({
-      //   data: {
-      //     userId: event.userId,
-      //     action: event.action,
-      //     ipAddress: event.ipAddress,
-      //     userAgent: event.userAgent,
-      //     metadata: event.metadata,
-      //     severity: event.severity,
-      //     timestamp: new Date(),
-      //   },
-      // });
-
-      // Por ahora, solo logear en consola
-      console.log('[AUDIT]', {
-        timestamp: new Date().toISOString(),
-        ...event,
+      await this.prisma.createAuditLog({
+        userId: event.userId,
+        action: event.action,
+        ipAddress: event.ipAddress,
+        userAgent: event.userAgent,
+        metadata: event.metadata,
+        severity: event.severity,
       });
-    } catch (error) {
-      // No fallar si el logging falla
-      console.error('[AUDIT ERROR]', error);
+    } catch {
+      // Non-fatal: never let audit failure break the primary request
     }
   }
 
-  /**
-   * Registra un intento de login fallido
-   */
   async logFailedLogin(
     email: string,
     reason: string,
@@ -62,9 +44,6 @@ export class AuditLogService {
     });
   }
 
-  /**
-   * Registra un login exitoso
-   */
   async logSuccessfulLogin(
     userId: string,
     ipAddress?: string,
@@ -79,9 +58,6 @@ export class AuditLogService {
     });
   }
 
-  /**
-   * Registra un cambio de contraseña
-   */
   async logPasswordChange(
     userId: string,
     ipAddress?: string,
@@ -96,9 +72,6 @@ export class AuditLogService {
     });
   }
 
-  /**
-   * Registra habilitación de 2FA
-   */
   async log2FAEnabled(
     userId: string,
     ipAddress?: string,
@@ -113,9 +86,6 @@ export class AuditLogService {
     });
   }
 
-  /**
-   * Registra deshabilitación de 2FA
-   */
   async log2FADisabled(
     userId: string,
     ipAddress?: string,
@@ -130,9 +100,6 @@ export class AuditLogService {
     });
   }
 
-  /**
-   * Registra uso de código de respaldo
-   */
   async logBackupCodeUsed(
     userId: string,
     remainingCodes: number,
@@ -149,9 +116,6 @@ export class AuditLogService {
     });
   }
 
-  /**
-   * Registra revocación de sesión
-   */
   async logSessionRevoked(
     userId: string,
     sessionId: string,

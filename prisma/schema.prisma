@@ -35,3 +35,18 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
 }
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  severity  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}

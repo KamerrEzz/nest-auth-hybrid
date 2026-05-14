@@ -73,4 +73,15 @@ export class PrismaRepository extends PrismaService {
     });
     return result;
   }
+
+  async createAuditLog(data: {
+    userId?: string;
+    action: string;
+    ipAddress?: string;
+    userAgent?: string;
+    metadata?: Record<string, unknown>;
+    severity: string;
+  }) {
+    return this.auditLog.create({ data });
+  }
 }
