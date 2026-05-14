@@ -298,13 +298,6 @@ export class AuthController {
     return { ok: true };
   }
 
-  @Delete('sessions/:id')
-  @UseGuards(HybridAuthGuard)
-  async revoke(@Param('id') id: string) {
-    await this.auth.revokeSession(id);
-    return { ok: true };
-  }
-
   @Delete('sessions/others')
   @UseGuards(HybridAuthGuard)
   async revokeOthers(
@@ -314,6 +307,16 @@ export class AuthController {
     const rawSid: unknown = req.cookies?.sessionId;
     const currentId = typeof rawSid === 'string' ? rawSid : '';
     await this.auth.revokeOtherSessions(user.id, currentId);
+    return { ok: true };
+  }
+
+  @Delete('sessions/:id')
+  @UseGuards(HybridAuthGuard)
+  async revoke(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+  ) {
+    await this.auth.revokeSession(id, user.id);
     return { ok: true };
   }
   @Get('google')

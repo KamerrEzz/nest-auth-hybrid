@@ -2,6 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UserService } from '../../modules/user/user.service';
 import { TokenService } from '../../modules/token/token.service';
@@ -331,7 +333,10 @@ export class AuthService {
     return this.sessions.listByUser(userId);
   }
 
-  async revokeSession(id: string) {
+  async revokeSession(id: string, ownerUserId: string) {
+    const session = await this.sessions.get(id);
+    if (!session) throw new NotFoundException();
+    if (session.userId !== ownerUserId) throw new ForbiddenException();
     await this.sessions.revoke(id);
   }
 
