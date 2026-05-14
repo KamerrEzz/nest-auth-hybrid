@@ -4,6 +4,41 @@ Todas las novedades relevantes de este proyecto se documentan aquí. El
 formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.2.1] - 2026-05-14
+
+### Sprint 7 — Correcciones de compatibilidad OAuth
+
+#### Added
+
+- **`client_secret_basic` en el endpoint `/oauth/token`**: el handler ahora
+  extrae `client_id` y `client_secret` del encabezado `Authorization: Basic`
+  cuando no vienen en el cuerpo. Auth.js / NextAuth v5 usa este método por
+  defecto, conforme al RFC 6749 § 2.3.1. El descubrimiento OIDC anuncia
+  `client_secret_post`, `client_secret_basic` y `none` como métodos soportados.
+
+#### Changed
+
+- **`TokenDto.client_id` y `client_secret` marcados como `@IsOptional()`**:
+  class-validator ya no rechaza la petición cuando las credenciales viajan en
+  la cabecera `Authorization: Basic` en lugar del body.
+
+#### Fixed
+
+- **JWT `alg` HS256 rechazado por `oauth4webapi`**: el endpoint `/oauth/token`
+  incluía un `id_token` firmado con HS256 cuando el scope `openid` estaba
+  presente. `oauth4webapi` (usado internamente por Auth.js / NextAuth v5)
+  espera RS256 por defecto para `id_token` conforme a la especificación OIDC
+  Core. Solución: se elimina `id_token` de la respuesta del token endpoint; los
+  clientes obtienen los claims del usuario mediante el endpoint estándar
+  `/oauth/userinfo`.
+- **Sesiones obsoletas causaban violación de FK**: si un usuario eliminaba y
+  recreaba su cuenta (p. ej. volviendo a ejecutar `prisma db seed`), una cookie
+  `sessionId` antigua apuntaba a un `userId` ya inexistente. `SessionAuthGuard`
+  ahora verifica que el usuario existe en la base de datos y lanza 401 si no,
+  evitando el error `OAuthAuthCode_userId_fkey` en cascada.
+
+---
+
 ## [0.2.0] - 2026-05-14
 
 ### Sprint 6 — OAuth 2.0 Authorization Server

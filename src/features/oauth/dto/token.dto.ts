@@ -13,8 +13,9 @@ export class TokenDto {
   @IsString()
   redirect_uri?: string;
 
+  @IsOptional()
   @IsString()
-  client_id!: string;
+  client_id?: string;
 
   @IsOptional()
   @IsString()

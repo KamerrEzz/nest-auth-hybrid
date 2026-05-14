@@ -175,14 +175,30 @@ export class OAuthController {
   @HttpCode(200)
   @RateLimit(20, 60)
   @UseGuards(RateLimitGuard)
-  async token(@Body() dto: TokenDto) {
+  async token(@Body() dto: TokenDto, @Req() req: Request) {
+    // Support client_secret_basic (Authorization: Basic base64(id:secret))
+    let clientId = dto.client_id;
+    let clientSecret = dto.client_secret;
+    const authHeader = req.headers.authorization;
+    if (!clientId && authHeader?.startsWith('Basic ')) {
+      const decoded = Buffer.from(authHeader.slice(6), 'base64').toString(
+        'utf8',
+      );
+      const sep = decoded.indexOf(':');
+      if (sep > 0) {
+        clientId = decodeURIComponent(decoded.slice(0, sep));
+        clientSecret = decodeURIComponent(decoded.slice(sep + 1));
+      }
+    }
+    if (!clientId) throw new BadRequestException('client_id requerido');
+
     if (dto.grant_type === 'authorization_code') {
       if (!dto.code || !dto.redirect_uri)
         throw new BadRequestException('Parámetros requeridos faltantes');
       return this.oauth.exchangeCode({
         code: dto.code,
-        clientId: dto.client_id,
-        clientSecret: dto.client_secret,
+        clientId,
+        clientSecret,
         redirectUri: dto.redirect_uri,
         codeVerifier: dto.code_verifier,
       });
@@ -192,8 +208,8 @@ export class OAuthController {
         throw new BadRequestException('refresh_token requerido');
       return this.oauth.refreshTokenGrant({
         refreshToken: dto.refresh_token,
-        clientId: dto.client_id,
-        clientSecret: dto.client_secret,
+        clientId,
+        clientSecret,
       });
     }
     throw new BadRequestException('grant_type no soportado');

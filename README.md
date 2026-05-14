@@ -48,6 +48,18 @@ Se combina con [`next-auth-hybrid`](https://github.com/KamerrEzz/next-auth-hybri
 - **Códigos de respaldo** — 10 códigos de un solo uso generados con CSPRNG, almacenados como hashes bcrypt
 - **Activación/desactivación segura** — requiere el TOTP actual para rotar el secreto; flujo de cancelación para configuraciones pendientes
 
+### VaultAuth como proveedor OAuth 2.0 / OIDC
+
+El backend actúa como Authorization Server compatible con OAuth 2.0 y OpenID Connect. Aplicaciones de terceros pueden delegar la autenticación en VaultAuth igual que harían con Google o Discord.
+
+- **Authorization Code + PKCE** — flujo estándar para clientes web y móviles. S256 obligatorio para clientes públicos (sin `client_secret`).
+- **Refresh token** — rotación segura; el token anterior queda revocado en cada uso.
+- **Gestión de apps** — los usuarios registran sus propias aplicaciones OAuth desde el portal del desarrollador. El `client_secret` se entrega en plano una sola vez y se almacena como hash bcrypt.
+- **Scopes soportados** — `openid`, `profile`, `email`, `notes`.
+- **Métodos de autenticación del cliente** — `client_secret_post`, `client_secret_basic` (cabecera `Authorization: Basic`) y `none` (PKCE puro).
+- **Endpoints de descubrimiento** — `GET /.well-known/openid-configuration` y `GET /.well-known/jwks.json` para configuración automática de clientes compatibles con OIDC.
+- **Rate limit** — 20 req/min en `/oauth/authorize` y `/oauth/token`.
+
 ### Login social
 
 - **Google OAuth 2.0** y **Discord OAuth 2.0** vía Passport
@@ -237,7 +249,66 @@ npm run start:dev
 | `POST`   | `/notes`                    | Crear nota                                                         |
 | `GET`    | `/notes/:id`                | Obtener nota                                                       |
 
+### OAuth 2.0 — Proveedor (Authorization Server)
+
+| Método | Ruta                                | Descripción                                                                        |
+| ------ | ----------------------------------- | ---------------------------------------------------------------------------------- |
+| `GET`  | `/oauth/authorize`                  | Inicia el flujo; redirige a login o a la pantalla de consent                       |
+| `POST` | `/oauth/authorize`                  | Registra el consent y emite el `authorization_code`                                |
+| `POST` | `/oauth/token`                      | Intercambia código por tokens; admite `client_secret_post` y `client_secret_basic` |
+| `GET`  | `/oauth/userinfo`                   | Claims del usuario según scopes concedidos (Bearer token)                          |
+| `POST` | `/oauth/introspect`                 | RFC 7662 — estado del token                                                        |
+| `POST` | `/oauth/revoke`                     | RFC 7009 — revocar access o refresh token                                          |
+| `GET`  | `/.well-known/openid-configuration` | Documento de descubrimiento OIDC                                                   |
+| `GET`  | `/.well-known/jwks.json`            | Conjunto de claves públicas (JWKS)                                                 |
+
+### OAuth 2.0 — Gestión de aplicaciones
+
+| Método   | Ruta                                | Descripción                      |
+| -------- | ----------------------------------- | -------------------------------- |
+| `POST`   | `/oauth/apps`                       | Registrar nueva aplicación OAuth |
+| `GET`    | `/oauth/apps`                       | Listar aplicaciones del usuario  |
+| `DELETE` | `/oauth/apps/:id`                   | Eliminar aplicación              |
+| `POST`   | `/oauth/apps/:id/regenerate-secret` | Regenerar `client_secret`        |
+
 Documentación completa: [`auth_endpoints.md`](./auth_endpoints.md)
+
+---
+
+## Deshabilitar el módulo OAuth
+
+Si tu proyecto no necesita exponer VaultAuth como proveedor OAuth para aplicaciones de terceros, puedes eliminarlo por completo en tres pasos:
+
+### 1. Quitar el módulo del AppModule
+
+```ts
+// src/app.module.ts
+// Eliminar esta línea:
+import { OAuthModule } from './features/oauth/oauth.module';
+
+@Module({
+  imports: [
+    // ...
+    // OAuthModule,  ← eliminar
+  ],
+})
+```
+
+### 2. Eliminar los modelos Prisma y su migración
+
+En `prisma/schema.prisma`, elimina los modelos `OAuthApp`, `OAuthAuthCode` y `OAuthToken` y sus relaciones en el modelo `User`. Luego crea una nueva migración:
+
+```bash
+npx prisma migrate dev --name remove_oauth
+```
+
+### 3. Eliminar los archivos del módulo (opcional)
+
+```bash
+rm -rf src/features/oauth/
+```
+
+Los endpoints `/.well-known/*` también desaparecerán al quitar el módulo. El resto del sistema de autenticación (login, 2FA, sesiones, login social) permanece completamente operativo.
 
 ---
 
@@ -257,6 +328,10 @@ Este proyecto ha sido auditado contra el **OWASP Top 10 (2021)** a lo largo de c
 | Bloqueo de cuenta          | 5 intentos fallidos → bloqueo de 15 min en Redis (por email, independiente del rate limit por IP) |
 | Rastro de auditoría        | Cada evento de autenticación persistido en tabla `AuditLog` de Postgres                           |
 | Infraestructura            | Sin credenciales en compose; puertos de datos internos; Redis con `requirepass`                   |
+| OAuth — client_secret      | Almacenado como hash bcrypt (cost 10); se entrega en plano una sola vez al registrar la app       |
+| OAuth — PKCE               | S256 obligatorio para clientes públicos; `code_verifier` validado con SHA-256 + base64url         |
+| OAuth — tokens             | Access tokens JWT HS256 con TTL 1 h; refresh tokens opacos de 96 bytes CSPRNG; revocación en DB   |
+| OAuth — sesiones obsoletas | `SessionAuthGuard` verifica existencia del usuario en DB en cada petición; 401 si fue eliminado   |
 
 ---
 

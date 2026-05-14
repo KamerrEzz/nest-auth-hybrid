@@ -323,9 +323,12 @@ export class OAuthService {
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       subject_types_supported: ['public'],
-      id_token_signing_alg_values_supported: ['HS256'],
       scopes_supported: ALLOWED_SCOPES,
-      token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
+      token_endpoint_auth_methods_supported: [
+        'client_secret_post',
+        'client_secret_basic',
+        'none',
+      ],
       claims_supported: ['sub', 'email', 'email_verified', 'name'],
       code_challenge_methods_supported: ['S256', 'plain'],
     };
@@ -372,26 +375,6 @@ export class OAuthService {
       refresh_token: refreshToken,
       scope: scopes.join(' '),
     };
-
-    // Issue id_token for openid scope
-    if (scopes.includes('openid')) {
-      const user = await this.prisma.findUserById(userId);
-      const idClaims: Record<string, unknown> = {
-        sub: userId,
-        aud: clientId,
-        iss:
-          this.config.get<string>('app.serverUrl') ?? 'http://localhost:3000',
-      };
-      if (user && scopes.includes('profile')) idClaims.name = user.name;
-      if (user && scopes.includes('email')) {
-        idClaims.email = user.email;
-        idClaims.email_verified = user.emailVerified;
-      }
-      response.id_token = await this.jwt.signAsync(idClaims, {
-        secret,
-        expiresIn: 3600,
-      });
-    }
 
     return response;
   }
