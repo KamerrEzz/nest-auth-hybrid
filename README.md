@@ -20,6 +20,8 @@
 
 <p align="center">
   <a href="./README.en.md">🇬🇧 English version</a>
+  &nbsp;·&nbsp;
+  <a href="./docs/README.md">📚 Documentación completa</a>
 </p>
 
 ---
@@ -271,7 +273,7 @@ npm run start:dev
 | `DELETE` | `/oauth/apps/:id`                   | Eliminar aplicación              |
 | `POST`   | `/oauth/apps/:id/regenerate-secret` | Regenerar `client_secret`        |
 
-Documentación completa: [`auth_endpoints.md`](./auth_endpoints.md)
+Documentación completa: [`docs/api/auth.md`](./docs/api/auth.md) · [`docs/api/oauth.md`](./docs/api/oauth.md)
 
 ---
 

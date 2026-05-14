@@ -26,14 +26,14 @@ Cuando conectas tu propio frontend a esta API, tienes dos opciones de enrutamien
 
 ### Comparación
 
-| | Subdominio para la API | Ruta del dominio principal |
-|---|---|---|
-| **Ejemplo** | `api.vault.com` | `vault.com/api` |
-| **CORS** | Requerido (orígenes distintos) | Sin CORS si el proxy lo maneja |
-| **Cookies** | Necesita `domain=.vault.com` | Funcionan sin configuración extra |
-| **Frontend** | Cualquier servidor / dominio | Mismo servidor o proxy central |
-| **SSL** | Certificado para `api.vault.com` | Certificado del dominio principal |
-| **Independencia** | Backend completamente separable | Acoplado al proxy del frontend |
+|                      | Subdominio para la API                    | Ruta del dominio principal                    |
+| -------------------- | ----------------------------------------- | --------------------------------------------- |
+| **Ejemplo**          | `api.vault.com`                           | `vault.com/api`                               |
+| **CORS**             | Requerido (orígenes distintos)            | Sin CORS si el proxy lo maneja                |
+| **Cookies**          | Necesita `domain=.vault.com`              | Funcionan sin configuración extra             |
+| **Frontend**         | Cualquier servidor / dominio              | Mismo servidor o proxy central                |
+| **SSL**              | Certificado para `api.vault.com`          | Certificado del dominio principal             |
+| **Independencia**    | Backend completamente separable           | Acoplado al proxy del frontend                |
 | **Recomendado para** | Múltiples clientes, microservicio de auth | Proyecto con un solo frontend, servidor único |
 
 ---
@@ -95,9 +95,9 @@ api.vault.com {
 
 **DNS:**
 
-| Tipo | Nombre | Valor |
-|------|--------|-------|
-| A | `api` | `IP_DEL_SERVIDOR` |
+| Tipo | Nombre | Valor             |
+| ---- | ------ | ----------------- |
+| A    | `api`  | `IP_DEL_SERVIDOR` |
 
 ---
 
@@ -168,12 +168,14 @@ Y elimina el `rewrite` / `strip_prefix` del proxy.
 ### ¿Cuándo elegir cada opción?
 
 **Elige subdominio propio (`api.vault.com`) si:**
+
 - Tienes varios frontends o clientes (web, móvil, panel admin) consumiendo el mismo API
 - El backend y el frontend viven en infraestructuras distintas
 - Quieres actualizar y escalar el backend sin afectar el proxy del frontend
 - Usas este backend como un microservicio de auth central
 
 **Elige ruta del dominio principal (`vault.com/api`) si:**
+
 - Tienes un único frontend y un único servidor
 - Quieres cero configuración de CORS
 - Las cookies deben funcionar sin ajustes
@@ -187,16 +189,16 @@ El backend es independiente del frontend incluido en el repo hermano (`next-auth
 
 ### Casos de uso
 
-| Caso | ¿Aplica? |
-|---|---|
-| Tienes tu propio frontend (React, Vue, Angular, Svelte) | ✅ Conecta con CORS + cookies o JWT |
-| App móvil (React Native, Flutter) | ✅ Usa el accessToken JWT del body de login |
-| Microservicio de auth central para múltiples apps | ✅ Configura `CORS_ORIGINS` con cada cliente |
-| Reemplazar Auth0 / Clerk self-hosted | ✅ |
-| Agregar auth a un proyecto NestJS existente | ✅ Copia los módulos que necesitas |
-| Proyecto con solo autenticación básica sin 2FA | ✅ El 2FA es opt-in, no obligatorio |
-| Multi-tenant con DB por organización | ⚠️ Requiere modificar el schema de Prisma |
-| Autenticación empresarial SAML / LDAP | ❌ No incluido |
+| Caso                                                    | ¿Aplica?                                     |
+| ------------------------------------------------------- | -------------------------------------------- |
+| Tienes tu propio frontend (React, Vue, Angular, Svelte) | ✅ Conecta con CORS + cookies o JWT          |
+| App móvil (React Native, Flutter)                       | ✅ Usa el accessToken JWT del body de login  |
+| Microservicio de auth central para múltiples apps       | ✅ Configura `CORS_ORIGINS` con cada cliente |
+| Reemplazar Auth0 / Clerk self-hosted                    | ✅                                           |
+| Agregar auth a un proyecto NestJS existente             | ✅ Copia los módulos que necesitas           |
+| Proyecto con solo autenticación básica sin 2FA          | ✅ El 2FA es opt-in, no obligatorio          |
+| Multi-tenant con DB por organización                    | ⚠️ Requiere modificar el schema de Prisma    |
+| Autenticación empresarial SAML / LDAP                   | ❌ No incluido                               |
 
 ### Qué ya incluye sin tocar nada
 
@@ -216,7 +218,9 @@ El backend es independiente del frontend incluido en el repo hermano (`next-auth
 **1. Obtener el CSRF token** (requerido en todas las mutaciones):
 
 ```javascript
-const { data } = await axios.get('https://api.vault.com/auth/csrf', { withCredentials: true });
+const { data } = await axios.get('https://api.vault.com/auth/csrf', {
+  withCredentials: true,
+});
 // guarda data.csrfToken
 ```
 
@@ -227,9 +231,9 @@ const { data } = await axios.post(
   'https://api.vault.com/auth/login',
   { email, password },
   {
-    withCredentials: true,                         // necesario para las cookies
+    withCredentials: true, // necesario para las cookies
     headers: { 'X-CSRF-Token': csrfToken },
-  }
+  },
 );
 // data.accessToken está disponible para clientes sin soporte de cookies
 // la cookie sessionId se setea automáticamente si el cliente las acepta
@@ -243,7 +247,7 @@ await axios.get('https://api.vault.com/auth/me', { withCredentials: true });
 
 // Sin cookies (móvil) — usando Bearer token
 await axios.get('https://api.vault.com/auth/me', {
-  headers: { Authorization: `Bearer ${accessToken}` }
+  headers: { Authorization: `Bearer ${accessToken}` },
 });
 ```
 
@@ -251,13 +255,13 @@ await axios.get('https://api.vault.com/auth/me', {
 
 ## Requisitos
 
-| Componente | Versión mínima |
-|---|---|
-| OS | Ubuntu 22.04 LTS / Debian 12 |
-| Node.js | 20 LTS |
-| PostgreSQL | 15+ |
-| Redis | 7+ |
-| RAM | 1 GB (2 GB recomendado) |
+| Componente | Versión mínima               |
+| ---------- | ---------------------------- |
+| OS         | Ubuntu 22.04 LTS / Debian 12 |
+| Node.js    | 20 LTS                       |
+| PostgreSQL | 15+                          |
+| Redis      | 7+                           |
+| RAM        | 1 GB (2 GB recomendado)      |
 
 ---
 
@@ -567,9 +571,9 @@ certbot renew --dry-run   # probar renovación automática
 
 Crea un registro **A** en tu proveedor de DNS:
 
-| Tipo | Nombre | Valor | TTL |
-|------|--------|-------|-----|
-| A | `api` | `IP_DEL_SERVIDOR` | Auto |
+| Tipo | Nombre | Valor             | TTL  |
+| ---- | ------ | ----------------- | ---- |
+| A    | `api`  | `IP_DEL_SERVIDOR` | Auto |
 
 > Si usas Cloudflare, configura el proxy en modo "DNS only" (nube gris) al inicio para verificar que el SSL funciona. Activa CDN (nube naranja) después si lo deseas.
 
@@ -655,19 +659,19 @@ Para clientes mobile sin soporte de cookies, considera exponer también el `acce
 
 ### Endpoints principales
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/auth/csrf` | Obtener CSRF token |
-| POST | `/auth/register` | Registrar usuario |
-| POST | `/auth/login` | Login (retorna tokens + cookie) |
-| POST | `/auth/refresh` | Renovar access token |
-| POST | `/auth/logout` | Cerrar sesión |
-| GET | `/auth/me` | Datos del usuario autenticado |
-| POST | `/auth/enable-2fa` | Iniciar setup 2FA (retorna QR) |
-| POST | `/auth/verify-2fa` | Confirmar código TOTP |
-| GET | `/auth/2fa/status` | Estado del 2FA |
-| POST | `/auth/disable-2fa` | Desactivar 2FA |
-| POST | `/auth/verify-otp` | Verificar OTP de email |
+| Método | Ruta                | Descripción                     |
+| ------ | ------------------- | ------------------------------- |
+| GET    | `/auth/csrf`        | Obtener CSRF token              |
+| POST   | `/auth/register`    | Registrar usuario               |
+| POST   | `/auth/login`       | Login (retorna tokens + cookie) |
+| POST   | `/auth/refresh`     | Renovar access token            |
+| POST   | `/auth/logout`      | Cerrar sesión                   |
+| GET    | `/auth/me`          | Datos del usuario autenticado   |
+| POST   | `/auth/enable-2fa`  | Iniciar setup 2FA (retorna QR)  |
+| POST   | `/auth/verify-2fa`  | Confirmar código TOTP           |
+| GET    | `/auth/2fa/status`  | Estado del 2FA                  |
+| POST   | `/auth/disable-2fa` | Desactivar 2FA                  |
+| POST   | `/auth/verify-otp`  | Verificar OTP de email          |
 
 Para la referencia completa de endpoints ver `auth_endpoints.md`.
 

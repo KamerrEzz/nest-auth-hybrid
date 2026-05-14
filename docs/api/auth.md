@@ -4,29 +4,29 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 
 ## Resumen de Endpoints
 
-| Método | Ruta | Descripción |
-| :--- | :--- | :--- |
-| POST | `/auth/register` | Registra un nuevo usuario. |
-| POST | `/auth/login` | Inicia sesión con credenciales. |
-| POST | `/auth/verify-otp` | Verifica el código OTP para 2FA. |
-| POST | `/auth/enable-2fa` | Inicia el proceso de habilitación de 2FA. |
-| POST | `/auth/verify-2fa` | Verifica el código para confirmar 2FA. |
-| GET | `/auth/2fa/status` | Obtiene el estado de 2FA del usuario. |
-| POST | `/auth/disable-2fa` | Deshabilita 2FA. |
-| POST | `/auth/2fa/cancel` | Cancela el proceso de configuración de 2FA. |
-| GET | `/auth/csrf` | Obtiene un token CSRF. |
-| POST | `/auth/change-password` | Cambia la contraseña del usuario. |
-| POST | `/auth/refresh` | Refresca el token de acceso. |
-| GET | `/auth/me` | Obtiene la información del usuario actual. |
-| POST | `/auth/logout` | Cierra la sesión actual. |
-| GET | `/auth/sessions` | Lista las sesiones activas del usuario. |
-| DELETE | `/auth/sessions` | Revoca todas las sesiones del usuario. |
-| DELETE | `/auth/sessions/:id` | Revoca una sesión específica. |
-| DELETE | `/auth/sessions/others` | Revoca todas las sesiones excepto la actual. |
-| GET | `/auth/google` | Inicia autenticación con Google. |
-| GET | `/auth/google/callback` | Callback de autenticación con Google. |
-| GET | `/auth/discord` | Inicia autenticación con Discord. |
-| GET | `/auth/discord/callback` | Callback de autenticación con Discord. |
+| Método | Ruta                     | Descripción                                  |
+| :----- | :----------------------- | :------------------------------------------- |
+| POST   | `/auth/register`         | Registra un nuevo usuario.                   |
+| POST   | `/auth/login`            | Inicia sesión con credenciales.              |
+| POST   | `/auth/verify-otp`       | Verifica el código OTP para 2FA.             |
+| POST   | `/auth/enable-2fa`       | Inicia el proceso de habilitación de 2FA.    |
+| POST   | `/auth/verify-2fa`       | Verifica el código para confirmar 2FA.       |
+| GET    | `/auth/2fa/status`       | Obtiene el estado de 2FA del usuario.        |
+| POST   | `/auth/disable-2fa`      | Deshabilita 2FA.                             |
+| POST   | `/auth/2fa/cancel`       | Cancela el proceso de configuración de 2FA.  |
+| GET    | `/auth/csrf`             | Obtiene un token CSRF.                       |
+| POST   | `/auth/change-password`  | Cambia la contraseña del usuario.            |
+| POST   | `/auth/refresh`          | Refresca el token de acceso.                 |
+| GET    | `/auth/me`               | Obtiene la información del usuario actual.   |
+| POST   | `/auth/logout`           | Cierra la sesión actual.                     |
+| GET    | `/auth/sessions`         | Lista las sesiones activas del usuario.      |
+| DELETE | `/auth/sessions`         | Revoca todas las sesiones del usuario.       |
+| DELETE | `/auth/sessions/:id`     | Revoca una sesión específica.                |
+| DELETE | `/auth/sessions/others`  | Revoca todas las sesiones excepto la actual. |
+| GET    | `/auth/google`           | Inicia autenticación con Google.             |
+| GET    | `/auth/google/callback`  | Callback de autenticación con Google.        |
+| GET    | `/auth/discord`          | Inicia autenticación con Discord.            |
+| GET    | `/auth/discord/callback` | Callback de autenticación con Discord.       |
 
 ---
 
@@ -40,11 +40,11 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 
 **Request Body (`RegisterDto`):**
 
-| Campo | Tipo | Validaciones | Descripción |
-| :--- | :--- | :--- | :--- |
-| `email` | string | `@IsEmail()` | Correo electrónico del usuario. |
+| Campo      | Tipo   | Validaciones                                    | Descripción                                                                                                   |
+| :--------- | :----- | :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| `email`    | string | `@IsEmail()`                                    | Correo electrónico del usuario.                                                                               |
 | `password` | string | `@IsString()`, `@MinLength(8)`, `@Matches(...)` | Contraseña. Debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial. |
-| `name` | string | `@IsString()` | (Opcional) Nombre del usuario. |
+| `name`     | string | `@IsString()`                                   | (Opcional) Nombre del usuario.                                                                                |
 
 **Response (`RegisterResponseDto`):**
 
@@ -63,6 +63,7 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 ```
 
 **Cookies:**
+
 - `sessionId`: HttpOnly, Secure (prod), SameSite: Strict
 - `csrfToken`: HttpOnly: false, Secure (prod), SameSite: Strict
 
@@ -76,14 +77,15 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 
 **Request Body (`LoginDto`):**
 
-| Campo | Tipo | Validaciones | Descripción |
-| :--- | :--- | :--- | :--- |
-| `email` | string | `@IsEmail()` | Correo electrónico. |
-| `password` | string | `@IsString()`, `@MinLength(8)` | Contraseña. |
+| Campo      | Tipo   | Validaciones                   | Descripción         |
+| :--------- | :----- | :----------------------------- | :------------------ |
+| `email`    | string | `@IsEmail()`                   | Correo electrónico. |
+| `password` | string | `@IsString()`, `@MinLength(8)` | Contraseña.         |
 
 **Response:**
 
-*Caso Exitoso (`AuthResponseDto`):*
+_Caso Exitoso (`AuthResponseDto`):_
+
 ```json
 {
   "accessToken": "string",
@@ -98,7 +100,8 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 }
 ```
 
-*Caso 2FA Requerido:*
+_Caso 2FA Requerido:_
+
 ```json
 {
   "requiresOtp": true,
@@ -107,6 +110,7 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 ```
 
 **Cookies (Caso Exitoso):**
+
 - `sessionId`
 - `csrfToken`
 
@@ -119,6 +123,7 @@ Este documento detalla los endpoints disponibles en el módulo `src/features/aut
 **Descripción:** Completa el inicio de sesión verificando el código OTP cuando el usuario tiene 2FA habilitado.
 
 **Headers:**
+
 - Requiere autenticación previa (token temporal o sesión parcial, manejado por `AuthGuard('twofa')`).
 
 **Response (`AuthResponseDto`):**
@@ -133,13 +138,15 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Genera un secreto TOTP para configurar 2FA.
 
 **Response:**
+
 ```json
 {
   "secret": "string",
   "otpauthUrl": "string"
 }
 ```
-*(Nota: La respuesta exacta depende de `auth.service.ts`, se infiere estructura común)*
+
+_(Nota: La respuesta exacta depende de `auth.service.ts`, se infiere estructura común)_
 
 ---
 
@@ -150,6 +157,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Confirma la habilitación de 2FA validando un código generado por la app autenticadora.
 
 **Request Body:**
+
 ```json
 {
   "code": "string"
@@ -168,6 +176,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Devuelve el estado actual de la autenticación de dos factores para el usuario.
 
 **Response:**
+
 ```json
 {
   "enabled": boolean,
@@ -185,6 +194,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Desactiva la autenticación de dos factores.
 
 **Request Body:**
+
 ```json
 {
   "totpCode": "string", // Opcional
@@ -215,11 +225,13 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Obtiene un token CSRF para proteger peticiones mutantes.
 
 **Response:**
+
 ```json
 {
   "csrfToken": "string"
 }
 ```
+
 **Cookies:** Establece la cookie `csrfToken`.
 
 ---
@@ -232,11 +244,11 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 
 **Request Body (`ChangePasswordDto`):**
 
-| Campo | Tipo | Validaciones | Descripción |
-| :--- | :--- | :--- | :--- |
-| `currentPassword` | string | `@IsString()`, `@MinLength(8)` | Contraseña actual. |
-| `newPassword` | string | `@IsString()`, `@MinLength(8)` | Nueva contraseña. |
-| `totpCode` | string | `@IsOptional()`, `@IsString()` | Código 2FA si está habilitado. |
+| Campo             | Tipo   | Validaciones                   | Descripción                    |
+| :---------------- | :----- | :----------------------------- | :----------------------------- |
+| `currentPassword` | string | `@IsString()`, `@MinLength(8)` | Contraseña actual.             |
+| `newPassword`     | string | `@IsString()`, `@MinLength(8)` | Nueva contraseña.              |
+| `totpCode`        | string | `@IsOptional()`, `@IsString()` | Código 2FA si está habilitado. |
 
 **Response:**
 `boolean` (o resultado de la operación).
@@ -251,8 +263,8 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 
 **Request Body (`RefreshTokenDto`):**
 
-| Campo | Tipo | Validaciones | Descripción |
-| :--- | :--- | :--- | :--- |
+| Campo          | Tipo   | Validaciones  | Descripción       |
+| :------------- | :----- | :------------ | :---------------- |
 | `refreshToken` | string | `@IsString()` | El refresh token. |
 
 **Response:**
@@ -267,6 +279,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Devuelve la información del perfil del usuario autenticado.
 
 **Response (`UserResponseDto`):**
+
 ```json
 {
   "id": "string",
@@ -275,7 +288,8 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
   "createdAt": "Date"
 }
 ```
-*(Nota: Campos sensibles como password, totpSecret, etc., son excluidos)*
+
+_(Nota: Campos sensibles como password, totpSecret, etc., son excluidos)_
 
 ---
 
@@ -286,6 +300,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Cierra la sesión del usuario y limpia las cookies de sesión.
 
 **Response:**
+
 ```json
 {
   "ok": true
@@ -301,6 +316,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Lista todas las sesiones activas del usuario.
 
 **Response:**
+
 ```json
 {
   "currentId": "string",
@@ -327,6 +343,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Cierra todas las sesiones activas del usuario.
 
 **Response:**
+
 ```json
 {
   "ok": true
@@ -342,9 +359,11 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Cierra una sesión específica por su ID.
 
 **Parámetros:**
+
 - `id`: ID de la sesión a revocar.
 
 **Response:**
+
 ```json
 {
   "ok": true
@@ -360,6 +379,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 **Descripción:** Cierra todas las sesiones excepto la actual.
 
 **Response:**
+
 ```json
 {
   "ok": true
@@ -371,6 +391,7 @@ Misma estructura que `POST /auth/login` (Caso Exitoso).
 ### 18-21. OAuth (Google / Discord)
 
 **Endpoints:**
+
 - `GET /auth/google`
 - `GET /auth/google/callback`
 - `GET /auth/discord`
