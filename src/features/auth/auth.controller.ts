@@ -29,6 +29,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { UserResponseDto } from '../../modules/user/dto/user-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { instanceToPlain } from 'class-transformer';
+import { parseDuration } from '../../common/utils/parse-duration';
 import type { Request as ExpressRequest } from 'express';
 import type { SessionEntity } from '../../modules/session/entities/session.entity';
 
@@ -39,19 +40,6 @@ export class AuthController {
     private readonly users: UserService,
     private readonly config: ConfigService,
   ) {}
-
-  private parseDuration(value: string | number | undefined) {
-    if (typeof value === 'number') return value;
-    if (!value) return 0;
-    const s = String(value);
-    if (/^\d+$/.test(s)) return parseInt(s, 10);
-    const m = s.match(/^(\d+)([smhd])$/);
-    if (!m) return 0;
-    const num = parseInt(m[1], 10);
-    const unit = m[2];
-    const map = { s: 1, m: 60, h: 3600, d: 86400 } as Record<string, number>;
-    return num * map[unit];
-  }
 
   private toUserDto(entity: {
     id: string;
@@ -133,7 +121,7 @@ export class AuthController {
       sameSite: 'strict',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
-    const expiresIn = this.parseDuration(
+    const expiresIn = parseDuration(
       this.config.get<string>('jwt.accessExpiration'),
     );
     const dtoOut = new AuthResponseDto({
@@ -171,7 +159,7 @@ export class AuthController {
       sameSite: 'strict',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
-    const expiresIn = this.parseDuration(
+    const expiresIn = parseDuration(
       this.config.get<string>('jwt.accessExpiration'),
     );
     const dtoOut = new AuthResponseDto({
@@ -358,7 +346,7 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
-    const expiresIn = this.parseDuration(
+    const expiresIn = parseDuration(
       this.config.get<string>('jwt.accessExpiration'),
     );
     const dtoOut = new AuthResponseDto({
@@ -406,7 +394,7 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: parseInt(process.env.SESSION_MAX_AGE ?? '604800000', 10),
     });
-    const expiresIn = this.parseDuration(
+    const expiresIn = parseDuration(
       this.config.get<string>('jwt.accessExpiration'),
     );
     const dtoOut = new AuthResponseDto({

@@ -54,6 +54,28 @@ export class AuthService {
   ) {}
 
 
+  private readonly LOCKOUT_THRESHOLD = 5;
+  private readonly LOCKOUT_TTL_S = 15 * 60;
+
+  private lockoutKey(email: string) {
+    return `lockout:${email.toLowerCase()}`;
+  }
+
+  private async isLocked(email: string): Promise<boolean> {
+    const val = await this.redis.get(this.lockoutKey(email));
+    return parseInt(val ?? '0', 10) >= this.LOCKOUT_THRESHOLD;
+  }
+
+  private async incrementLockout(email: string): Promise<void> {
+    const key = this.lockoutKey(email);
+    const count = await this.redis.incr(key);
+    if (count === 1) await this.redis.expire(key, this.LOCKOUT_TTL_S);
+  }
+
+  private async clearLockout(email: string): Promise<void> {
+    await this.redis.del(this.lockoutKey(email));
+  }
+
   async register(
     email: string,
     password: string,
@@ -85,8 +107,12 @@ export class AuthService {
     password: string,
     meta?: { ipAddress?: string; userAgent?: string; location?: string },
   ): Promise<LoginSuccess | RequiresOtp> {
+    if (await this.isLocked(email)) {
+      throw new UnauthorizedException('Account temporarily locked. Try again later.');
+    }
     const user = await this.users.findByEmail(email);
     if (!user) {
+      await this.incrementLockout(email);
       await this.audit.logFailedLogin(
         email,
         'user_not_found',
@@ -97,6 +123,7 @@ export class AuthService {
     }
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
+      await this.incrementLockout(email);
       await this.audit.logFailedLogin(
         email,
         'invalid_password',
@@ -105,6 +132,7 @@ export class AuthService {
       );
       throw new UnauthorizedException();
     }
+    await this.clearLockout(email);
     if (user.has2FA) {
       const rec = await this.otp.generateTicket(user.email);
       return { requiresOtp: true, tempToken: rec.tempToken };

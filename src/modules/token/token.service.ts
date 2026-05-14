@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { parseDuration } from '../../common/utils/parse-duration';
 
 @Injectable()
 export class TokenService {
@@ -12,18 +13,14 @@ export class TokenService {
   signAccess(payload: Record<string, any>) {
     return this.jwt.signAsync(payload, {
       secret: this.config.get<string>('jwt.secret')!,
-      expiresIn: this.parseDuration(
-        this.config.get<string>('jwt.accessExpiration'),
-      ),
+      expiresIn: parseDuration(this.config.get<string>('jwt.accessExpiration')) || 3600,
     });
   }
 
   signRefresh(payload: Record<string, any>) {
     return this.jwt.signAsync(payload, {
       secret: this.config.get<string>('jwt.refreshSecret')!,
-      expiresIn: this.parseDuration(
-        this.config.get<string>('jwt.refreshExpiration'),
-      ),
+      expiresIn: parseDuration(this.config.get<string>('jwt.refreshExpiration')) || 604800,
     });
   }
 
@@ -41,16 +38,4 @@ export class TokenService {
     });
   }
 
-  private parseDuration(value: string | number | undefined) {
-    if (typeof value === 'number') return value;
-    if (!value) return undefined;
-    const s = String(value);
-    if (/^\d+$/.test(s)) return parseInt(s, 10);
-    const m = s.match(/^(\d+)([smhd])$/);
-    if (!m) return undefined as unknown as number;
-    const num = parseInt(m[1], 10);
-    const unit = m[2];
-    const map = { s: 1, m: 60, h: 3600, d: 86400 } as Record<string, number>;
-    return num * map[unit];
-  }
 }

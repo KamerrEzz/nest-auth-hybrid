@@ -1,14 +1,14 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 
 @Injectable()
 export class OtpService {
   constructor(@Inject(REDIS_CLIENT) private redis: Redis) {}
 
   async generate(email: string) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = (100000 + (randomBytes(4).readUInt32BE(0) % 900000)).toString();
     const tempToken = randomUUID();
     const ttlMs = 10 * 60 * 1000;
     const record = { tempToken, email, code, expiresAt: Date.now() + ttlMs };
@@ -55,7 +55,7 @@ export class OtpService {
     // Máximo 3 intentos
     if (attempts > 3) {
       await this.redis.del(this.key(tempToken));
-      throw new Error('Too many failed attempts');
+      throw new UnauthorizedException('Too many failed attempts');
     }
 
     const ok = rec.code === code;

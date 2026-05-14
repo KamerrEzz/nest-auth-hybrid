@@ -108,4 +108,32 @@ y el proyecto adopta [Versionado Semántico](https://semver.org/lang/es/).
 - Eliminadas 6 dependencias sin uso: `@keyv/redis`, `@nestjs/cache-manager`,
   `cache-manager`, `dotenv`, `uuid`, `zod`.
 
+### Sprint 3 — Robustez y calidad
+
+#### Added
+
+- **Bloqueo de cuenta por email**: `AuthService.login` introduce bloqueo
+  temporal basado en Redis (`lockout:<email>`, TTL 15 min) tras 5 intentos
+  fallidos consecutivos. Cuenta separada de la limitación por IP ya existente,
+  por lo que protege también desde IPs distintas. El contador se limpia en
+  cada login exitoso.
+
+- **`parseDuration` centralizado**: el helper que convierte cadenas de
+  duración (`15m`, `7d`, `3600`) a segundos existía duplicado como método
+  privado en `AuthController` y `TokenService`. Se mueve a
+  `src/common/utils/parse-duration.ts` y ambas clases pasan a importarlo.
+  `TokenService` aplica un fallback seguro (3 600 s / 7 días) cuando el
+  valor de configuración es inválido, evitando JWTs sin expiración.
+
+#### Fixed
+
+- **OTP generado con `Math.random()`**: `OtpService.generate` producía
+  códigos de 6 dígitos con PRNG no criptográfico. Se sustituye por
+  `randomBytes(4).readUInt32BE(0) % 900000 + 100000`, que lee del pool de
+  entropía del SO.
+- **`throw new Error(...)` en `OtpService.verify`**: al superar el límite
+  de intentos OTP el servicio lanzaba un `Error` genérico, que NestJS
+  convierte en HTTP 500. Ahora lanza `UnauthorizedException` para devolver
+  correctamente HTTP 401.
+
 [Unreleased]: https://github.com/Kamerr/nest-auth-hybrid/compare/main...HEAD
