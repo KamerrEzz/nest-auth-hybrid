@@ -7,6 +7,7 @@ import cacheConfig from './config/cache.config';
 import securityConfig from './config/security.config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './modules/database/prisma/prisma.module';
+import { RedisModule } from './modules/redis/redis.module';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './features/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
@@ -28,6 +29,7 @@ import { NotesModule } from './features/notes/notes.module';
       },
     ]),
     PrismaModule,
+    RedisModule,
     PassportModule,
     UserModule,
     AuthModule,

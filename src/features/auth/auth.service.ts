@@ -15,7 +15,9 @@ import { EmailService } from '../../modules/email/email.service';
 import { TotpService } from '../../modules/totp/totp.service';
 import type { UserEntity } from '../../common/types/auth.types';
 import { randomUUID, randomBytes } from 'crypto';
-import Redis from 'ioredis';
+import { Inject } from '@nestjs/common';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../modules/redis/redis.constants';
 import { AuditLogService } from '../../modules/audit/audit-log.service';
 
 export interface RegisterResult {
@@ -39,8 +41,6 @@ export interface RequiresOtp {
 
 @Injectable()
 export class AuthService {
-  private redis: Redis;
-
   constructor(
     private users: UserService,
     private tokens: TokenService,
@@ -50,9 +50,9 @@ export class AuthService {
     private email: EmailService,
     private totp: TotpService,
     private audit: AuditLogService,
-  ) {
-    this.redis = new Redis(this.config.get<string>('cache.redisUrl')!);
-  }
+    @Inject(REDIS_CLIENT) private redis: Redis,
+  ) {}
+
 
   async register(
     email: string,

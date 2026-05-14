@@ -1,15 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+import { Injectable, Inject } from '@nestjs/common';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 import { randomUUID } from 'crypto';
 import { SessionEntity } from './entities/session.entity';
 
 @Injectable()
 export class SessionService {
-  private redis: Redis;
-  constructor(private config: ConfigService) {
-    this.redis = new Redis(this.config.get<string>('cache.redisUrl')!);
-  }
+  constructor(@Inject(REDIS_CLIENT) private redis: Redis) {}
 
   async create(
     userId: string,

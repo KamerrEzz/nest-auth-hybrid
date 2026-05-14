@@ -4,10 +4,11 @@ import {
   ExecutionContext,
   HttpException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../modules/redis/redis.constants';
 import type { Request } from 'express';
 
 interface RateLimitOptions {
@@ -17,14 +18,10 @@ interface RateLimitOptions {
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  private redis: Redis;
-
   constructor(
     private reflector: Reflector,
-    private config: ConfigService,
-  ) {
-    this.redis = new Redis(this.config.get<string>('cache.redisUrl')!);
-  }
+    @Inject(REDIS_CLIENT) private redis: Redis,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const rateLimitOptions = this.reflector.get<RateLimitOptions>(
