@@ -2,16 +2,15 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { HybridAuthGuard } from '../../common/guards/hybrid-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
-import { ListNotesQueryDto, GetNoteQueryDto } from './dto/list-notes.dto';
 import type { NoteEntity } from '../../modules/note/entities/note.entity';
 
 @Controller('notes')
@@ -31,9 +30,9 @@ export class NotesController {
   @UseGuards(HybridAuthGuard)
   list(
     @CurrentUser() user: { id: string },
-    @Query() query: ListNotesQueryDto,
+    @Headers('x-totp-code') totpCode?: string,
   ): Promise<NoteEntity[]> {
-    return this.notes.list(user.id, query.totpCode);
+    return this.notes.list(user.id, totpCode);
   }
 
   @Get(':id')
@@ -41,8 +40,8 @@ export class NotesController {
   get(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
-    @Query() query: GetNoteQueryDto,
+    @Headers('x-totp-code') totpCode?: string,
   ): Promise<NoteEntity> {
-    return this.notes.get(user.id, id, query.totpCode);
+    return this.notes.get(user.id, id, totpCode);
   }
 }
