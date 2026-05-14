@@ -20,6 +20,235 @@ NestJS  :3000
 
 ---
 
+## Subdominio vs ruta única
+
+Cuando conectas tu propio frontend a esta API, tienes dos opciones de enrutamiento. La elección afecta directamente a CORS y al comportamiento de las cookies.
+
+### Comparación
+
+| | Subdominio para la API | Ruta del dominio principal |
+|---|---|---|
+| **Ejemplo** | `api.vault.com` | `vault.com/api` |
+| **CORS** | Requerido (orígenes distintos) | Sin CORS si el proxy lo maneja |
+| **Cookies** | Necesita `domain=.vault.com` | Funcionan sin configuración extra |
+| **Frontend** | Cualquier servidor / dominio | Mismo servidor o proxy central |
+| **SSL** | Certificado para `api.vault.com` | Certificado del dominio principal |
+| **Independencia** | Backend completamente separable | Acoplado al proxy del frontend |
+| **Recomendado para** | Múltiples clientes, microservicio de auth | Proyecto con un solo frontend, servidor único |
+
+---
+
+### Opción A — Subdominio propio
+
+```
+tu-frontend.com   → tu frontend (otro servidor o proceso)
+api.vault.com     → este backend (puerto 3000)
+```
+
+Los orígenes son distintos, por lo que el browser bloquea las requests sin CORS configurado. Ajusta en `.env`:
+
+```env
+APP_URL=https://api.vault.com
+CORS_ORIGINS=https://tu-frontend.com,https://app.tu-frontend.com
+```
+
+**⚠️ Cookies entre dominios distintos:**
+Si el frontend vive en `tu-frontend.com` y el backend en `api.vault.com`, las cookies HttpOnly no se comparten entre dominios completamente distintos aunque uses `SameSite=none`. Para que funcionen:
+
+- Usa el mismo dominio raíz: `tu-frontend.vault.com` + `api.vault.com`
+- Configura la cookie con `domain=.vault.com`
+
+```typescript
+// src/config/ — donde se configura la cookie de sesión
+cookie: {
+  domain: '.vault.com',
+  secure: true,
+  httpOnly: true,
+  sameSite: 'lax',
+}
+```
+
+**Nginx:**
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api.vault.com;
+    # ssl ...
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 5m;
+    }
+}
+```
+
+**Caddy:**
+
+```caddyfile
+api.vault.com {
+    reverse_proxy localhost:3000
+}
+```
+
+**DNS:**
+
+| Tipo | Nombre | Valor |
+|------|--------|-------|
+| A | `api` | `IP_DEL_SERVIDOR` |
+
+---
+
+### Opción B — Ruta del dominio principal
+
+```
+vault.com      → tu frontend
+vault.com/api  → este backend (puerto 3000)
+```
+
+El proxy de tu frontend (Nginx/Caddy/Vercel rewrites) redirige `/api/*` a este backend. El browser ve todo desde `vault.com` → **sin CORS, cookies sin configuración especial**.
+
+```env
+APP_URL=https://vault.com
+CORS_ORIGINS=    # vacío, no aplica CORS
+```
+
+**Nginx en el servidor del frontend:**
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name vault.com;
+    # ssl ...
+
+    # /api/* → este backend (puede estar en otra IP o el mismo servidor)
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        proxy_pass         http://IP_BACKEND:3000;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # El resto → tu frontend
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        # ...
+    }
+}
+```
+
+**Caddy:**
+
+```caddyfile
+vault.com {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy IP_BACKEND:3000
+    }
+
+    handle {
+        reverse_proxy localhost:3001
+    }
+}
+```
+
+**Nota:** el `rewrite` / `strip_prefix` elimina `/api` antes de llegar al backend, por lo que las rutas del NestJS siguen siendo `/auth/login`, no `/api/auth/login`. Si prefieres que el backend reciba el path completo, configura en `main.ts`:
+
+```typescript
+app.setGlobalPrefix('api');
+```
+
+Y elimina el `rewrite` / `strip_prefix` del proxy.
+
+---
+
+### ¿Cuándo elegir cada opción?
+
+**Elige subdominio propio (`api.vault.com`) si:**
+- Tienes varios frontends o clientes (web, móvil, panel admin) consumiendo el mismo API
+- El backend y el frontend viven en infraestructuras distintas
+- Quieres actualizar y escalar el backend sin afectar el proxy del frontend
+- Usas este backend como un microservicio de auth central
+
+**Elige ruta del dominio principal (`vault.com/api`) si:**
+- Tienes un único frontend y un único servidor
+- Quieres cero configuración de CORS
+- Las cookies deben funcionar sin ajustes
+- El proyecto es pequeño o mediano
+
+---
+
+## ¿Cuándo usar solo este backend?
+
+El backend es independiente del frontend incluido en el repo hermano (`next-auth-hybrid`). Puedes usarlo como la capa de autenticación de cualquier proyecto.
+
+### Casos de uso
+
+| Caso | ¿Aplica? |
+|---|---|
+| Tienes tu propio frontend (React, Vue, Angular, Svelte) | ✅ Conecta con CORS + cookies o JWT |
+| App móvil (React Native, Flutter) | ✅ Usa el accessToken JWT del body de login |
+| Microservicio de auth central para múltiples apps | ✅ Configura `CORS_ORIGINS` con cada cliente |
+| Reemplazar Auth0 / Clerk self-hosted | ✅ |
+| Agregar auth a un proyecto NestJS existente | ✅ Copia los módulos que necesitas |
+| Proyecto con solo autenticación básica sin 2FA | ✅ El 2FA es opt-in, no obligatorio |
+| Multi-tenant con DB por organización | ⚠️ Requiere modificar el schema de Prisma |
+| Autenticación empresarial SAML / LDAP | ❌ No incluido |
+
+### Qué ya incluye sin tocar nada
+
+- Registro, login, logout con email/contraseña
+- Refresh tokens con rotación automática
+- Sesiones múltiples por usuario
+- OAuth con Google y Discord
+- 2FA TOTP con backup codes cifrados en reposo
+- OTP por email (verificación en dos pasos)
+- Rate limiting por endpoint
+- CSRF tokens
+- Bloqueo temporal de cuenta tras intentos fallidos
+- Migraciones de base de datos con Prisma
+
+### Cómo integrar con tu frontend existente
+
+**1. Obtener el CSRF token** (requerido en todas las mutaciones):
+
+```javascript
+const { data } = await axios.get('https://api.vault.com/auth/csrf', { withCredentials: true });
+// guarda data.csrfToken
+```
+
+**2. Login:**
+
+```javascript
+const { data } = await axios.post(
+  'https://api.vault.com/auth/login',
+  { email, password },
+  {
+    withCredentials: true,                         // necesario para las cookies
+    headers: { 'X-CSRF-Token': csrfToken },
+  }
+);
+// data.accessToken está disponible para clientes sin soporte de cookies
+// la cookie sessionId se setea automáticamente si el cliente las acepta
+```
+
+**3. Acceder a rutas protegidas:**
+
+```javascript
+// Con cookies (web)
+await axios.get('https://api.vault.com/auth/me', { withCredentials: true });
+
+// Sin cookies (móvil) — usando Bearer token
+await axios.get('https://api.vault.com/auth/me', {
+  headers: { Authorization: `Bearer ${accessToken}` }
+});
+```
+
+---
+
 ## Requisitos
 
 | Componente | Versión mínima |
