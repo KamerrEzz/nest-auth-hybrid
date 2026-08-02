@@ -3,15 +3,30 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { TokenService } from '../../modules/token/token.service';
 import { SessionService } from '../../modules/session/session.service';
+import { PrismaRepository } from '../../modules/database/prisma/prisma.service';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
   let tokenService: jest.Mocked<TokenService>;
   let sessionService: jest.Mocked<SessionService>;
+  let prisma: jest.Mocked<PrismaRepository>;
   let mockReq: any;
 
   const validSid = 'session-abc-123';
   const validUserSub = 'user-123';
+  const mockUser = {
+    id: validUserSub,
+    email: 'test@example.com',
+    password: 'hashed',
+    name: 'Test User',
+    has2FA: false,
+    totpSecret: null,
+    backupCodes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastLoginAt: null,
+    emailVerified: true,
+  };
 
   beforeEach(() => {
     tokenService = {
@@ -26,8 +41,11 @@ describe('JwtAuthGuard', () => {
       }),
       touch: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<SessionService>;
+    prisma = {
+      findUserById: jest.fn().mockResolvedValue(mockUser),
+    } as unknown as jest.Mocked<PrismaRepository>;
 
-    guard = new JwtAuthGuard(tokenService, sessionService);
+    guard = new JwtAuthGuard(tokenService, sessionService, prisma);
 
     mockReq = {
       headers: {},
@@ -64,8 +82,9 @@ describe('JwtAuthGuard', () => {
       expect(result).toBe(true);
       expect(tokenService.verifyAccess).toHaveBeenCalledWith(accessToken);
       expect(sessionService.get).toHaveBeenCalledWith(validSid);
+      expect(prisma.findUserById).toHaveBeenCalledWith(validUserSub);
       expect(sessionService.touch).toHaveBeenCalledWith(validSid);
-      expect(mockReq.user).toEqual({ id: validUserSub });
+      expect(mockReq.user).toEqual(mockUser);
     });
 
     it('should throw UnauthorizedException when no Authorization header', async () => {
@@ -131,6 +150,46 @@ describe('JwtAuthGuard', () => {
         sid: validSid,
       });
       sessionService.get.mockResolvedValueOnce(null);
+
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => mockReq }),
+      } as unknown as ExecutionContext;
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(sessionService.touch).not.toHaveBeenCalled();
+      expect(prisma.findUserById).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedException when user not found in DB', async () => {
+      mockReq.headers['authorization'] = 'Bearer some-token';
+
+      tokenService.verifyAccess.mockResolvedValueOnce({
+        sub: validUserSub,
+        sid: validSid,
+      });
+      prisma.findUserById.mockResolvedValueOnce(null);
+
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => mockReq }),
+      } as unknown as ExecutionContext;
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(prisma.findUserById).toHaveBeenCalledWith(validUserSub);
+      expect(sessionService.touch).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedException when findUserById throws', async () => {
+      mockReq.headers['authorization'] = 'Bearer some-token';
+
+      tokenService.verifyAccess.mockResolvedValueOnce({
+        sub: validUserSub,
+        sid: validSid,
+      });
+      prisma.findUserById.mockRejectedValueOnce(new Error('db error'));
 
       const ctx = {
         switchToHttp: () => ({ getRequest: () => mockReq }),
