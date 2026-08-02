@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { TokenService } from '../../modules/token/token.service';
 import { SessionService } from '../../modules/session/session.service';
@@ -213,6 +215,40 @@ describe('JwtAuthGuard', () => {
       } as unknown as ExecutionContext;
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(sessionService.get).not.toHaveBeenCalled();
+      expect(sessionService.touch).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedException for a genuinely expired token', async () => {
+      const jwtService = new JwtService({});
+      const configService = {
+        get: (key: string) => {
+          if (key === 'jwt.secret') return 'test-secret';
+          if (key === 'jwt.accessExpiration') return '3600';
+          return null;
+        },
+      } as unknown as ConfigService;
+      const realTokenService = new TokenService(jwtService, configService);
+
+      const expiredToken = await jwtService.signAsync(
+        { sub: validUserSub, sid: validSid },
+        { secret: 'test-secret', expiresIn: '-1s' },
+      );
+
+      const realGuard = new JwtAuthGuard(
+        realTokenService,
+        sessionService,
+        prisma,
+      );
+
+      mockReq.headers['authorization'] = `Bearer ${expiredToken}`;
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => mockReq }),
+      } as unknown as ExecutionContext;
+
+      await expect(realGuard.canActivate(ctx)).rejects.toThrow(
         UnauthorizedException,
       );
       expect(sessionService.get).not.toHaveBeenCalled();
