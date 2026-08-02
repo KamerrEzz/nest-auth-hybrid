@@ -1,7 +1,7 @@
 <h1 align="center">nest-auth-hybrid</h1>
 
 <p align="center">
-  Production-ready authentication API built with NestJS — JWT sessions, 2FA, OAuth and full audit trail.
+  Authentication API built with NestJS — JWT sessions, 2FA, OAuth and full audit trail.
 </p>
 
 <p align="center">
@@ -14,8 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/OWASP_Top_10-audited-4CAF50?style=flat-square" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" />
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" />
 </p>
 
 <p align="center">
@@ -26,7 +25,7 @@
 
 ## Overview
 
-`nest-auth-hybrid` is a fully-featured authentication backend that covers every critical flow a modern application needs — from standard email/password login to hardware-based two-factor authentication and social SSO — with a production-grade security posture validated against the OWASP Top 10.
+`nest-auth-hybrid` is a fully-featured authentication backend that covers every critical flow a modern application needs — from standard email/password login to hardware-based two-factor authentication and social SSO.
 
 It pairs with [`next-auth-hybrid`](https://github.com/KamerrEzz/next-auth-hybrid) as a full-stack authentication system.
 
@@ -230,7 +229,7 @@ Full documentation: [`auth_endpoints.md`](./auth_endpoints.md)
 
 ## Security Posture
 
-This project has been audited against the **OWASP Top 10 (2021)** across four sprints. Key decisions:
+These are the security decisions implemented in the project. **They are not the result of a formal audit**, but practical measures based on known best practices and the most common risks from the OWASP Top 10 and CWE/SANS Top 25 lists. Key decisions:
 
 | Area | Decision |
 |---|---|
@@ -249,4 +248,4 @@ This project has been audited against the **OWASP Top 10 (2021)** across four sp
 
 ## License
 
-MIT © [Kamerr Ezz](https://github.com/KamerrEzz)
+© [Kamerr Ezz](https://github.com/KamerrEzz)
