@@ -13,6 +13,13 @@ import {
   UnauthorizedException,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiTags,
+  ApiCookieAuth,
+} from '@nestjs/swagger';
 import { OAuthService } from './oauth.service';
 import { CreateAppDto } from './dto/create-app.dto';
 import { TokenDto } from './dto/token.dto';
@@ -24,6 +31,8 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ConfigService } from '@nestjs/config';
 import type { Response, Request } from 'express';
 
+@ApiTags('oauth')
+@ApiTags('oauth')
 @Controller()
 export class OAuthController {
   constructor(
@@ -35,6 +44,9 @@ export class OAuthController {
 
   @Post('oauth/apps')
   @UseGuards(HybridAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Create a new OAuth application' })
+  @ApiResponse({ status: 201, description: 'OAuth app created' })
+  @ApiBearerAuth('JWT')
   async createApp(
     @CurrentUser() user: { id: string },
     @Body() dto: CreateAppDto,
@@ -44,12 +56,18 @@ export class OAuthController {
 
   @Get('oauth/apps')
   @UseGuards(HybridAuthGuard)
+  @ApiOperation({ summary: 'List OAuth applications for the current user' })
+  @ApiResponse({ status: 200, description: 'OAuth apps listed' })
+  @ApiBearerAuth('JWT')
   async getApps(@CurrentUser() user: { id: string }) {
     return this.oauth.getApps(user.id);
   }
 
   @Delete('oauth/apps/:id')
   @UseGuards(HybridAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Delete an OAuth application' })
+  @ApiResponse({ status: 200, description: 'OAuth app deleted' })
+  @ApiBearerAuth('JWT')
   async deleteApp(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
@@ -60,6 +78,9 @@ export class OAuthController {
 
   @Post('oauth/apps/:id/regenerate-secret')
   @UseGuards(HybridAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Regenerate client secret for an OAuth app' })
+  @ApiResponse({ status: 200, description: 'Client secret regenerated' })
+  @ApiBearerAuth('JWT')
   async regenerateSecret(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
@@ -72,6 +93,9 @@ export class OAuthController {
   @Get('oauth/authorize')
   @RateLimit(20, 60)
   @UseGuards(RateLimitGuard)
+  @ApiOperation({ summary: 'OAuth 2.0 / OIDC authorization endpoint' })
+  @ApiResponse({ status: 200, description: 'Authorization response' })
+  @ApiResponse({ status: 302, description: 'Redirect to login or consent' })
   async authorize(
     @Query('response_type') responseType: string,
     @Query('client_id') clientId: string,
@@ -147,6 +171,8 @@ export class OAuthController {
   }
 
   @Get('oauth/consent/:requestId')
+  @ApiOperation({ summary: 'Get authorization consent info' })
+  @ApiResponse({ status: 200, description: 'Consent info retrieved' })
   async getConsentInfo(@Param('requestId') requestId: string) {
     return this.oauth.getAuthRequest(requestId);
   }
@@ -154,6 +180,9 @@ export class OAuthController {
   @Post('oauth/authorize')
   @HttpCode(200)
   @UseGuards(HybridAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'OAuth 2.0 / OIDC grant consent' })
+  @ApiResponse({ status: 200, description: 'Consent granted' })
+  @ApiBearerAuth('JWT')
   async grantConsent(
     @CurrentUser() user: { id: string },
     @Body() body: { request_id: string; approved: boolean },
@@ -175,6 +204,9 @@ export class OAuthController {
   @HttpCode(200)
   @RateLimit(20, 60)
   @UseGuards(RateLimitGuard)
+  @ApiOperation({ summary: 'OAuth 2.0 / OIDC token endpoint' })
+  @ApiResponse({ status: 200, description: 'Access token issued' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async token(@Body() dto: TokenDto, @Req() req: Request) {
     // Support client_secret_basic (Authorization: Basic base64(id:secret))
     let clientId = dto.client_id;
@@ -219,6 +251,8 @@ export class OAuthController {
 
   @Post('oauth/introspect')
   @HttpCode(200)
+  @ApiOperation({ summary: 'OAuth 2.0 introspection endpoint' })
+  @ApiResponse({ status: 200, description: 'Token introspection result' })
   async introspect(
     @Body() body: { token: string; client_id: string; client_secret: string },
   ) {
@@ -234,6 +268,8 @@ export class OAuthController {
 
   @Post('oauth/revoke')
   @HttpCode(200)
+  @ApiOperation({ summary: 'OAuth 2.0 token revocation endpoint' })
+  @ApiResponse({ status: 200, description: 'Token revoked' })
   async revoke(
     @Body() body: { token: string; client_id: string; client_secret: string },
   ) {
@@ -245,6 +281,9 @@ export class OAuthController {
   }
 
   @Get('oauth/userinfo')
+  @ApiOperation({ summary: 'OAuth 2.0 / OIDC userinfo endpoint' })
+  @ApiResponse({ status: 200, description: 'Userinfo retrieved' })
+  @ApiBearerAuth('JWT')
   async userInfo(@Req() req: Request) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer '))
@@ -256,11 +295,15 @@ export class OAuthController {
   // ── Discovery ───────────────────────────────────────────────────────
 
   @Get('.well-known/openid-configuration')
+  @ApiOperation({ summary: 'OpenID Connect discovery endpoint' })
+  @ApiResponse({ status: 200, description: 'OpenID configuration retrieved' })
   discovery() {
     return this.oauth.getDiscovery();
   }
 
   @Get('.well-known/jwks.json')
+  @ApiOperation({ summary: 'OpenID Connect JWKS endpoint' })
+  @ApiResponse({ status: 200, description: 'JWKS returned' })
   jwks() {
     // Currently HS256 — no public keys to expose
     return { keys: [] };
