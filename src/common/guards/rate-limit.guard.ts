@@ -16,6 +16,22 @@ interface RateLimitOptions {
   duration: number;
 }
 
+const RATE_LIMIT_LUA = `
+  local key = KEYS[1]
+  local limit = tonumber(ARGV[1])
+  local ttl = tonumber(ARGV[2])
+
+  local count = tonumber(redis.call('GET', key) or '0')
+  if count and count >= limit then
+    return -1
+  end
+  count = redis.call('INCR', key)
+  if count == 1 then
+    redis.call('EXPIRE', key, ttl)
+  end
+  return count
+`;
+
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   constructor(
@@ -34,10 +50,16 @@ export class RateLimitGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request>();
     const key = `rl:${req.ip}:${req.path}`;
 
-    const current = await this.redis.get(key);
-    const count = current ? parseInt(current, 10) : 0;
+    const result = await this.redis.eval(
+      RATE_LIMIT_LUA,
+      1,
+      key,
+      rateLimitOptions.points,
+      rateLimitOptions.duration,
+    );
 
-    if (count >= rateLimitOptions.points) {
+    const count = result as number;
+    if (count === -1) {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -46,14 +68,6 @@ export class RateLimitGuard implements CanActivate {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-
-    // Incrementar contador
-    const pipeline = this.redis.pipeline();
-    pipeline.incr(key);
-    if (count === 0) {
-      pipeline.expire(key, rateLimitOptions.duration);
-    }
-    await pipeline.exec();
 
     return true;
   }

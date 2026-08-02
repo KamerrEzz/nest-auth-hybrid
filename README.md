@@ -1,7 +1,7 @@
 <h1 align="center">nest-auth-hybrid</h1>
 
 <p align="center">
-  API de autenticación lista para producción construida con NestJS — sesiones JWT, 2FA, OAuth y auditoría completa.
+  API de autenticación construida con NestJS — sesiones JWT, 2FA, OAuth y auditoría completa.
 </p>
 
 <p align="center">
@@ -14,7 +14,6 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/OWASP_Top_10-auditado-4CAF50?style=flat-square" />
   <img src="https://img.shields.io/badge/Licencia-MIT-yellow?style=flat-square" />
 </p>
 
@@ -28,7 +27,7 @@
 
 ## Descripción general
 
-`nest-auth-hybrid` es un backend de autenticación completo que cubre cada flujo crítico que una aplicación moderna necesita — desde el login clásico con email y contraseña hasta autenticación de dos factores y SSO social — con una postura de seguridad de nivel producción validada contra el OWASP Top 10.
+`nest-auth-hybrid` es un backend de autenticación completo que cubre cada flujo crítico que una aplicación moderna necesita — desde el login clásico con email y contraseña hasta autenticación de dos factores y SSO social — con medidas de seguridad implementadas siguiendo buenas prácticas.
 
 Se combina con [`next-auth-hybrid`](https://github.com/KamerrEzz/next-auth-hybrid) como sistema de autenticación full-stack.
 
@@ -314,9 +313,9 @@ Los endpoints `/.well-known/*` también desaparecerán al quitar el módulo. El 
 
 ---
 
-## Postura de seguridad
+## Medidas de seguridad implementadas
 
-Este proyecto ha sido auditado contra el **OWASP Top 10 (2021)** a lo largo de cuatro sprints. Decisiones clave:
+Estas son las decisiones de seguridad implementadas en el proyecto. **No son el resultado de una auditoría formal**, sino medidas prácticas basadas en buenas prácticas conocidas y los riesgos más comunes de las listas OWASP Top 10 y CWE/SANS Top 25.
 
 | Área                       | Decisión                                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------------------------- |
