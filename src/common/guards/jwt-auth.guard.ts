@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { TokenService } from '../../modules/token/token.service';
 import { SessionService } from '../../modules/session/session.service';
+import { PrismaRepository } from '../../modules/database/prisma/prisma.service';
 import type { Request } from 'express';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private tokens: TokenService,
     private sessions: SessionService,
+    private prisma: PrismaRepository,
   ) {}
 
   async canActivate(ctx: ExecutionContext) {
@@ -28,8 +30,10 @@ export class JwtAuthGuard implements CanActivate {
       if (!payload.sid) throw new UnauthorizedException();
       const s = await this.sessions.get(payload.sid);
       if (!s) throw new UnauthorizedException();
+      const user = await this.prisma.findUserById(payload.sub);
+      if (!user) throw new UnauthorizedException();
       await this.sessions.touch(payload.sid);
-      req.user = { id: payload.sub };
+      req.user = user;
       return true;
     } catch {
       throw new UnauthorizedException();
