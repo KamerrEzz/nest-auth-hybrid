@@ -140,7 +140,9 @@ describe('OAuthController (e2e)', () => {
 
   beforeEach(async () => {
     const moduleFixture = await buildModule().compile();
-    oauthService = moduleFixture.get<OAuthService>(OAuthService) as unknown as jest.Mocked<OAuthService>;
+    oauthService = moduleFixture.get<OAuthService>(
+      OAuthService,
+    ) as unknown as jest.Mocked<OAuthService>;
     prisma = moduleFixture.get<PrismaRepository>(PrismaRepository);
 
     app = moduleFixture.createNestApplication();

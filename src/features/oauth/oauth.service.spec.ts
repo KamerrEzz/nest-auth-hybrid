@@ -62,7 +62,9 @@ describe('OAuthService', () => {
 
     // Extract the actual TestingModule from TestingModuleBuilder
     service = moduleRef.get<OAuthService>(OAuthService);
-    prisma = moduleRef.get<PrismaRepository>(PrismaRepository) as unknown as jest.Mocked<PrismaRepository>;
+    prisma = moduleRef.get<PrismaRepository>(
+      PrismaRepository,
+    ) as unknown as jest.Mocked<PrismaRepository>;
     jest.clearAllMocks();
   });
 
@@ -70,7 +72,8 @@ describe('OAuthService', () => {
 
   describe('verifyPkce', () => {
     it('should return true for valid S256 challenge', () => {
-      const verifier = 'dbd10d2e1d58f0326314a0479ca51a796534a0646ed57dfc6f80a7965f0e3e2f';
+      const verifier =
+        'dbd10d2e1d58f0326314a0479ca51a796534a0646ed57dfc6f80a7965f0e3e2f';
       const hash = createHash('sha256').update(verifier).digest();
       const challenge = hash.toString('base64url');
 
@@ -85,7 +88,11 @@ describe('OAuthService', () => {
     });
 
     it('should return false for invalid S256 challenge', () => {
-      const result = service['verifyPkce']('verifier', 'invalid-challenge', 'S256');
+      const result = service['verifyPkce'](
+        'verifier',
+        'invalid-challenge',
+        'S256',
+      );
       expect(result).toBe(false);
     });
 
@@ -114,7 +121,8 @@ describe('OAuthService', () => {
 
     beforeEach(() => {
       // Stub internal client validation so we can test the token lookup logic
-      jest.spyOn(service, 'validateConfidentialClient' as any)
+      jest
+        .spyOn(service, 'validateConfidentialClient' as any)
         .mockResolvedValue({
           id: 'app-1',
           clientId: mockClientId,
@@ -150,7 +158,10 @@ describe('OAuthService', () => {
     });
 
     it('should return active:false for revoked token', async () => {
-      prisma.findOAuthTokenByAccess.mockResolvedValue({ ...mockValidToken, revoked: true });
+      prisma.findOAuthTokenByAccess.mockResolvedValue({
+        ...mockValidToken,
+        revoked: true,
+      });
 
       const result = await service.introspect(
         'valid-access-token',
@@ -162,7 +173,10 @@ describe('OAuthService', () => {
     });
 
     it('should return active:false for expired token', async () => {
-      prisma.findOAuthTokenByAccess.mockResolvedValue({ ...mockValidToken, expiresAt: new Date(Date.now() - 1000) });
+      prisma.findOAuthTokenByAccess.mockResolvedValue({
+        ...mockValidToken,
+        expiresAt: new Date(Date.now() - 1000),
+      });
 
       const result = await service.introspect(
         'valid-access-token',

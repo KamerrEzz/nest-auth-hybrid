@@ -14,7 +14,9 @@ describe('JwtAuthGuard', () => {
   const validUserSub = 'user-123';
 
   beforeEach(() => {
-    tokenService = { verifyAccess: jest.fn() } as unknown as jest.Mocked<TokenService>;
+    tokenService = {
+      verifyAccess: jest.fn(),
+    } as unknown as jest.Mocked<TokenService>;
     sessionService = {
       get: jest.fn().mockResolvedValue({
         id: validSid,
