@@ -6,23 +6,24 @@ import { SessionService } from '../../modules/session/session.service';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
-  let tokenService: TokenService;
-  let sessionService: SessionService;
+  let tokenService: jest.Mocked<TokenService>;
+  let sessionService: jest.Mocked<SessionService>;
   let mockReq: any;
 
   const validSid = 'session-abc-123';
   const validUserSub = 'user-123';
 
   beforeEach(() => {
-    tokenService = { verifyAccess: jest.fn() } as unknown as TokenService;
+    tokenService = { verifyAccess: jest.fn() } as unknown as jest.Mocked<TokenService>;
     sessionService = {
       get: jest.fn().mockResolvedValue({
         id: validSid,
         userId: validUserSub,
         expiresAt: Date.now() + 60000,
+        lastActive: Date.now(),
       }),
       touch: jest.fn().mockResolvedValue(undefined),
-    } as unknown as SessionService;
+    } as unknown as jest.Mocked<SessionService>;
 
     guard = new JwtAuthGuard(tokenService, sessionService);
 
@@ -49,6 +50,7 @@ describe('JwtAuthGuard', () => {
         id: validSid,
         userId: validUserSub,
         expiresAt: Date.now() + 60000,
+        lastActive: Date.now(),
       });
 
       const ctx = {

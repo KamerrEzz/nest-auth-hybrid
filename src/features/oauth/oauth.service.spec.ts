@@ -10,7 +10,7 @@ import { createHash, randomBytes } from 'crypto';
 
 describe('OAuthService', () => {
   let service: OAuthService;
-  let prisma: PrismaRepository;
+  let prisma: jest.Mocked<PrismaRepository>;
   let moduleRef: TestingModule;
 
   const mockClientId = 'test-client';
@@ -62,7 +62,7 @@ describe('OAuthService', () => {
 
     // Extract the actual TestingModule from TestingModuleBuilder
     service = moduleRef.get<OAuthService>(OAuthService);
-    prisma = moduleRef.get<PrismaRepository>(PrismaRepository);
+    prisma = moduleRef.get<PrismaRepository>(PrismaRepository) as unknown as jest.Mocked<PrismaRepository>;
     jest.clearAllMocks();
   });
 
@@ -124,7 +124,19 @@ describe('OAuthService', () => {
 
     it('should return active:true for valid token', async () => {
       prisma.findOAuthTokenByAccess.mockResolvedValue(mockValidToken);
-      prisma.findUserById.mockResolvedValue({ id: mockUserId, email: 'test@example.com' });
+      prisma.findUserById.mockResolvedValue({
+        id: mockUserId,
+        email: 'test@example.com',
+        password: 'hashed',
+        name: null,
+        has2FA: false,
+        totpSecret: null,
+        backupCodes: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLoginAt: null,
+        emailVerified: true,
+      });
 
       const result = await service.introspect(
         'valid-access-token',

@@ -43,7 +43,7 @@ jest.mock('bcrypt', () => ({
 
 describe('OAuthController (e2e)', () => {
   let app: INestApplication;
-  let oauthService: OAuthService;
+  let oauthService: jest.Mocked<OAuthService>;
   let prisma: PrismaRepository;
 
   const mockClientId = 'test-oauth-client';
@@ -140,7 +140,7 @@ describe('OAuthController (e2e)', () => {
 
   beforeEach(async () => {
     const moduleFixture = await buildModule().compile();
-    oauthService = moduleFixture.get<OAuthService>(OAuthService);
+    oauthService = moduleFixture.get<OAuthService>(OAuthService) as unknown as jest.Mocked<OAuthService>;
     prisma = moduleFixture.get<PrismaRepository>(PrismaRepository);
 
     app = moduleFixture.createNestApplication();
@@ -267,7 +267,9 @@ describe('OAuthController (e2e)', () => {
           validResult,
       ).compile();
 
-      oauthService = moduleFixture.get<OAuthService>(OAuthService);
+      oauthService = moduleFixture.get<OAuthService>(
+        OAuthService,
+      ) as unknown as jest.Mocked<OAuthService>;
       app = moduleFixture.createNestApplication();
       app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
       await app.init();
@@ -293,7 +295,9 @@ describe('OAuthController (e2e)', () => {
         active: false,
       })).compile();
 
-      oauthService = moduleFixture.get<OAuthService>(OAuthService);
+      oauthService = moduleFixture.get<OAuthService>(
+        OAuthService,
+      ) as unknown as jest.Mocked<OAuthService>;
       app = moduleFixture.createNestApplication();
       app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
       await app.init();

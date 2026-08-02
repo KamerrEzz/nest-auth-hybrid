@@ -7,8 +7,8 @@ import { REDIS_CLIENT } from '../../modules/redis/redis.constants';
 
 describe('RateLimitGuard', () => {
   let guard: RateLimitGuard;
-  let reflector: Reflector;
-  let redis: Redis;
+  let reflector: jest.Mocked<Reflector>;
+  let redis: jest.Mocked<Redis>;
   let mockReq: any;
 
   const defaultOptions = { points: 10, duration: 60 };
@@ -16,9 +16,9 @@ describe('RateLimitGuard', () => {
   beforeEach(() => {
     redis = {
       eval: jest.fn(),
-    } as unknown as Redis;
+    } as unknown as jest.Mocked<Redis>;
 
-    reflector = { get: jest.fn() } as unknown as Reflector;
+    reflector = { get: jest.fn() } as unknown as jest.Mocked<Reflector>;
 
     mockReq = {
       ip: '127.0.0.1',

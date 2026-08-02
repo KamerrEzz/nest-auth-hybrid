@@ -6,7 +6,7 @@ import { PrismaRepository } from '../../../modules/database/prisma/prisma.servic
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
-  let prisma: PrismaRepository;
+  let prisma: jest.Mocked<PrismaRepository>;
 
   const mockConfig = {
     get: jest.fn((key: string) => {
@@ -18,14 +18,21 @@ describe('JwtStrategy', () => {
   const mockUser = {
     id: 'user-123',
     email: 'test@example.com',
+    password: 'hashed',
     name: 'Test User',
+    has2FA: false,
+    totpSecret: null,
+    backupCodes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastLoginAt: null,
     emailVerified: true,
   };
 
   beforeEach(() => {
     prisma = {
       findUserById: jest.fn(),
-    } as unknown as PrismaRepository;
+    } as unknown as jest.Mocked<PrismaRepository>;
 
     strategy = new JwtStrategy(mockConfig, prisma);
   });
